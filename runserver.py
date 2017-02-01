@@ -1,4 +1,4 @@
-import flask, requests, threading, time, datetime
+import flask, requests, threading, time, json
 
 app = flask.Flask(__name__)
 
@@ -41,8 +41,25 @@ def add_recent(x, p, t):
 		while len(recents[x]) > 4:
 			recents[x].pop()
 
+def import_data():
+	global users, recents, corrects
+	with open('backup/users.txt', 'r') as f:
+		users = json.loads(f.read())
+	with open('backup/recents.txt', 'r') as f:
+		recents = json.loads(f.read())
+	with open('backup/corrects.txt', 'r') as f:
+		corrects = list(map(set, json.loads(f.read())))
+
+def export_data():
+	with open('backup/users.txt', 'w') as f:
+		f.write(json.dumps(users))
+	with open('backup/recents.txt', 'w') as f:
+		f.write(json.dumps(recents))
+	with open('backup/corrects.txt', 'w') as f:
+		f.write(json.dumps(list(map(list, corrects))))
+
 def observe_status(s):
-	while True:
+	while alive:
 		r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
 		for i in range(len(r) - 1, 1, -1):
 			t = r[i]
@@ -59,10 +76,19 @@ def observe_status(s):
 		time.sleep(1)
 
 s = requests.session()
-users = dict()
-recents = list()
-corrects = list()
 
-threading.Thread(target = observe_status, args = (s, ), daemon = True).start()
+th = list()
+th.append(threading.Thread(target = observe_status, args = (s, ), daemon = True))
+
+print('Importing data...')
+import_data()
+alive = True
+for t in th:
+	t.start()
 app.run('localhost', 5000)
-
+print('Waiting for threads to die...')
+alive = False
+for t in th:
+	t.join()
+print('Exporting data...')
+export_data()
