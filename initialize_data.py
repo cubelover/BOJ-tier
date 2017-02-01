@@ -1,6 +1,6 @@
-with open('backup/users.txt', 'w') as f:
+with open('data/users.txt', 'w') as f:
 	f.write('{}')
-with open('backup/recents.txt', 'w') as f:
+with open('data/recents.txt', 'w') as f:
 	f.write('[]')
-with open('backup/corrects.txt', 'w') as f:
+with open('data/corrects.txt', 'w') as f:
 	f.write('[]')

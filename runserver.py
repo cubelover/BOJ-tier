@@ -43,19 +43,19 @@ def add_recent(x, p, t):
 
 def import_data():
 	global users, recents, corrects
-	with open('backup/users.txt', 'r') as f:
+	with open('data/users.txt', 'r') as f:
 		users = json.loads(f.read())
-	with open('backup/recents.txt', 'r') as f:
+	with open('data/recents.txt', 'r') as f:
 		recents = json.loads(f.read())
-	with open('backup/corrects.txt', 'r') as f:
+	with open('data/corrects.txt', 'r') as f:
 		corrects = list(map(set, json.loads(f.read())))
 
 def export_data():
-	with open('backup/users.txt', 'w') as f:
+	with open('data/users.txt', 'w') as f:
 		f.write(json.dumps(users))
-	with open('backup/recents.txt', 'w') as f:
+	with open('data/recents.txt', 'w') as f:
 		f.write(json.dumps(recents))
-	with open('backup/corrects.txt', 'w') as f:
+	with open('data/corrects.txt', 'w') as f:
 		f.write(json.dumps(list(map(list, corrects))))
 
 def observe_status(s):
