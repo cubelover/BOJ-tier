@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>User</h1>
+<h2>{{ u }}</h2>
+</div>
+<div class="content">
+<h2 class="content-subhead">Recent Corrects</h2>
+{% for p in r %}
+<p><a href="https://www.acmicpc.net/problem/{{ p[0] }}">{{ p[0] }}</a> - {{ p[1] }}</p>
+{% endfor %}
+</div>
+{% endblock %}
