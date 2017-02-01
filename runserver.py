@@ -16,7 +16,7 @@ def index():
 def user(u):
 	if u not in users:
 		return ''
-	t = time.time() + 32400
+	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1])) for x in recents[users[u]])
 	return flask.render_template('user.html', u = u, r = r if u in users else []).replace('\n', '')
 
@@ -38,7 +38,7 @@ def add_recent(x, p, t):
 	if not is_correct(x, p):
 		add_correct(x, p)
 		recents[x].insert(0, (p, t))
-		while len(recents[x]) > 4:
+		while len(recents[x]) > 10:
 			recents[x].pop()
 
 def import_data():
@@ -60,6 +60,7 @@ def export_data():
 
 def observe_status(s):
 	while alive:
+		T = time.time()
 		r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
 		for i in range(len(r) - 1, 1, -1):
 			t = r[i]
@@ -67,12 +68,9 @@ def observe_status(s):
 			u = t[:t.find(b'"')].decode('utf-8')
 			t = t[t.find(b'/problem/') + 9:]
 			p = int(t[:t.find(b'"')])
-			t = t[t.find(b'"top"') + 14:]
-			t = t[:t.find(b'"')].decode('utf-8')
-			t = int(time.mktime(time.strptime(t, '%Y년 %m월 %d일 %H시 %M분 %S초')))
 			if u not in users:
 				add_user(u)
-			add_recent(users[u], p, t)
+			add_recent(users[u], p, T)
 		time.sleep(1)
 
 s = requests.session()
