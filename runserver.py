@@ -21,7 +21,7 @@ def user(u):
 	return flask.render_template('user.html', u = u, r = r if u in users else []).replace('\n', '')
 
 ########
-# Back
+# Data
 
 def is_correct(x, p):
 	return (p in corrects[x])
@@ -58,20 +58,29 @@ def export_data():
 	with open('data/corrects.txt', 'w') as f:
 		f.write(json.dumps(list(map(list, corrects))))
 
+########
+# Back
+
 def observe_status(s):
 	while alive:
-		T = time.time()
-		r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
-		for i in range(len(r) - 1, 1, -1):
-			t = r[i]
-			t = t[t.find(b'/user/') + 6:]
-			u = t[:t.find(b'"')].decode('utf-8')
-			t = t[t.find(b'/problem/') + 9:]
-			p = int(t[:t.find(b'"')])
-			if u not in users:
-				add_user(u)
-			add_recent(users[u], p, T)
-		time.sleep(1)
+		try:
+			T = time.time()
+			r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
+			for i in range(len(r) - 1, 1, -1):
+				t = r[i]
+				i = t.find(b'/user/')
+				if i == -1:
+					continue
+				t = t[i + 6:]
+				u = t[:t.find(b'"')].decode('utf-8')
+				t = t[t.find(b'/problem/') + 9:]
+				p = int(t[:t.find(b'"')])
+				if u not in users:
+					add_user(u)
+				add_recent(users[u], p, T)
+		except Exception as e:
+			print(e)
+		time.sleep(5)
 
 s = requests.session()
 
