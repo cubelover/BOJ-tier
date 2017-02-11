@@ -66,7 +66,7 @@ def observe_status(s):
 		try:
 			T = time.time()
 			r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
-			for i in range(len(r) - 1, 1, -1):
+			for i in range(21, 1, -1):
 				t = r[i]
 				i = t.find(b'/user/')
 				if i == -1:
@@ -80,7 +80,7 @@ def observe_status(s):
 				add_recent(users[u], p, T)
 		except Exception as e:
 			print(e)
-		time.sleep(5)
+		time.sleep(1)
 
 s = requests.session()
 
