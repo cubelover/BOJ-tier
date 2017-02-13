@@ -38,7 +38,7 @@ def add_recent(x, p, t):
 	if not is_correct(x, p):
 		add_correct(x, p)
 		recents[x].insert(0, (p, t))
-		while len(recents[x]) > 10:
+		while len(recents[x]) > 20:
 			recents[x].pop()
 
 def import_data():
