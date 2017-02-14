@@ -80,7 +80,7 @@ def observe_status(s):
 				add_recent(users[u], p, T)
 		except Exception as e:
 			print(e)
-		time.sleep(1)
+		time.sleep(2)
 
 s = requests.session()
 
