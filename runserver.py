@@ -27,9 +27,10 @@ def is_correct(x, p):
 	return (p in corrects[x])
 
 def add_user(u):
-	users[u] = len(users)
-	recents.append(list())
-	corrects.append(set())
+	if u not in users:
+		users[u] = len(users)
+		recents.append(list())
+		corrects.append(set())
 
 def add_correct(x, p):
 	corrects[x].add(p)
@@ -64,6 +65,7 @@ def export_data():
 def observe_ranking():
 	p = 1
 	while alive:
+		z = 'observe ranking (%d)' % p
 		try:
 			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout =1).content.split(b'<a href="/user/')
 			n = len(r)
@@ -74,13 +76,14 @@ def observe_ranking():
 			for i in range(1, n):
 				t = r[i]
 				u = t[:t.find(b'"')].decode('utf-8')
-				if u not in users:
-					add_user(u)
+				add_user(u)
+			print(z, '-', 'success')
 		except Exception as e:
-			print(e)
+			print(z, '-', e)
 		time.sleep(5)
 
 def observe_status():
+	z = 'observe status'
 	while alive:
 		try:
 			T = time.time()
@@ -94,19 +97,21 @@ def observe_status():
 				u = t[:t.find(b'"')].decode('utf-8')
 				t = t[t.find(b'/problem/') + 9:]
 				p = int(t[:t.find(b'"')])
-				if u not in users:
-					add_user(u)
+				add_user(u)
 				add_recent(users[u], p, T)
+			print(z, '-', 'success')
 		except Exception as e:
-			print(e)
+			print(z, '-', e)
 		time.sleep(1)
 
 def autosave_data():
+	z = 'autosave data'
 	while alive:
 		try:
 			export_data()
+			print(z, '-', 'success')
 		except Exception as e:
-			print(e)
+			print(z, '-', e)
 		time.sleep(60)
 
 s = requests.session()
