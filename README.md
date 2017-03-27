@@ -1,7 +1,20 @@
-# BOJ Tier
-
+BOJ Tier
+========
 문제를 풀면 등급이 올라 공부할 동기를 부여해주는 시스템
 
+### Prerequisites
+- Python 3.4+
+
+### Instruction
+```
+# Install dependencies
+pipenv install
+
+# Run the server
+pipenv run python runserver.py
+```
+
+### TODOs
 - [x] 사찰 기능
 - [x] 백업 기능
 - [ ] 유저 등급 기능
