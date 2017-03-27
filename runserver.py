@@ -122,7 +122,7 @@ def _observe_user():
 			users_tmp.pop()
 			z = 'observe user (%d, %s)' % (len(users_tmp), u)
 			lock.release()
-			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 1).content
+			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30).content
 			r = r[r.find(b'<div class = "panel-body">'):]
 			r = r[:r.find(b'</div>')].split(b'<a href = "/problem/')
 			n = len(r)
