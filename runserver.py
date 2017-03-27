@@ -61,11 +61,30 @@ def export_data():
 ########
 # Back
 
-def observe_status(s):
+def observe_ranking():
+	p = 1
+	while alive:
+		try:
+			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout =1).content.split(b'<a href="/user/')
+			n = len(r)
+			if n == 1:
+				p = 1
+				continue
+			p += 1
+			for i in range(1, n):
+				t = r[i]
+				u = t[:t.find(b'"')].decode('utf-8')
+				if u not in users:
+					add_user(u)
+		except Exception as e:
+			print(e)
+		time.sleep(5)
+
+def observe_status():
 	while alive:
 		try:
 			T = time.time()
-			r = s.get('https://www.acmicpc.net/status/?result_id=4').content.split(b'<tr')
+			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 1).content.split(b'<tr')
 			for i in range(21, 1, -1):
 				t = r[i]
 				i = t.find(b'/user/')
@@ -80,22 +99,37 @@ def observe_status(s):
 				add_recent(users[u], p, T)
 		except Exception as e:
 			print(e)
-		time.sleep(2)
+		time.sleep(1)
+
+def autosave_data():
+	while alive:
+		try:
+			export_data()
+		except Exception as e:
+			print(e)
+		time.sleep(60)
 
 s = requests.session()
 
 th = list()
-th.append(threading.Thread(target = observe_status, args = (s, ), daemon = True))
+th.append((threading.Thread(target = observe_ranking, daemon = True), True))
+th.append((threading.Thread(target = observe_status, daemon = True), True))
+th.append((threading.Thread(target = autosave_data, daemon = True), False))
 
 print('Importing data...')
 import_data()
+
+print('Starting threads...')
 alive = True
-for t in th:
+for t, f in th:
 	t.start()
 app.run('localhost', 5000)
+
 print('Waiting for threads to die...')
 alive = False
-for t in th:
-	t.join()
+for t, f in th:
+	if f:
+		t.join()
+
 print('Exporting data...')
 export_data()
