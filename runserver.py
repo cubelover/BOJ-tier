@@ -34,7 +34,6 @@ def add_user(u):
 
 def add_correct(x, p):
 	corrects[x].add(p)
-	solvers[p].add(x)
 
 def add_recent(x, p, t):
 	if not is_correct(x, p):
@@ -44,20 +43,16 @@ def add_recent(x, p, t):
 			recents[x].pop()
 
 def import_data():
-	global users, recents, corrects
+	global users, recents, corrects, diffs, tiers
 	with open('data/users.txt', 'r') as f:
 		users = json.loads(f.read())
 	with open('data/recents.txt', 'r') as f:
 		recents = json.loads(f.read())
 	with open('data/corrects.txt', 'r') as f:
 		corrects = list(map(set, json.loads(f.read())))
-
-def preprocess():
-	global solvers
-	solvers = [set() for _ in range(20000)]
-	for x in range(len(users)):
-		for y in corrects[x]:
-			solvers[y].add(x)
+	with open('data/diffs.txt', 'r') as f:
+		diffs = json.loads(f.read())
+	tiers = [0 for _ in range(len(users))]
 
 def export_data():
 	with open('data/users.txt', 'w') as f:
@@ -66,6 +61,8 @@ def export_data():
 		f.write(json.dumps(recents))
 	with open('data/corrects.txt', 'w') as f:
 		f.write(json.dumps(list(map(list, corrects))))
+	with open('data/diffs.txt', 'w') as f:
+		f.write(json.dumps(diffs))
 
 ########
 # Back
@@ -85,7 +82,7 @@ def observe_ranking():
 				t = r[i]
 				u = t[:t.find(b'"')].decode('utf-8')
 				add_user(u)
-			print(z, '-', 'success')
+#			print(z, '-', 'success')
 		except Exception as e:
 			print(z, '-', e)
 		time.sleep(5)
@@ -107,7 +104,7 @@ def observe_status():
 				p = int(t[:t.find(b'"')])
 				add_user(u)
 				add_recent(users[u], p, T)
-			print(z, '-', 'success')
+#			print(z, '-', 'success')
 		except Exception as e:
 			print(z, '-', e)
 		time.sleep(1)
@@ -128,7 +125,7 @@ def _observe_user():
 			r = r[:r.find(b'</div>')].split(b'<a href = "/problem/')
 			n = len(r)
 			corrects[users[u]] = set(int(t[:t.find(b'"')]) for t in r[1::2])
-			print(z, '-', 'success')
+#			print(z, '-', 'success')
 		except Exception as e:
 			lock.acquire()
 			users_tmp.append(u)
@@ -139,19 +136,40 @@ def observe_user():
 	global users_tmp
 	while alive:
 		users_tmp = list(users.keys())
-		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(8)]
+		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(4)]
 		for t in th:
 			t.start()
 		for t in th:
 			t.join()
 		print('observe status - finished')
 
+def calculate_tier():
+	global diffs
+	diffs_tmp = [0 for _ in range(20000)]
+	while alive:
+		for i in range(len(users)):
+			lock.acquire()
+			x = list(corrects[i])
+			lock.release()
+			z = [diffs[y] ** 3 for y in x]
+			z.sort()
+			r = 0
+			for t in z:
+				r = r * .99 + t
+			tiers[i] = r
+			for y in x:
+				diffs_tmp[y] += 1 / (r * r)
+		for i in range(20000):
+			diffs[i] = 1 / diffs_tmp[i] ** .125 if diffs_tmp[i] else 1
+			diffs_tmp[i] = 0
+#		print('calculate tier - success')
+
 def autosave_data():
 	z = 'autosave data'
 	while alive:
 		try:
 			export_data()
-			print(z, '-', 'success')
+#			print(z, '-', 'success')
 		except Exception as e:
 			print(z, '-', e)
 		time.sleep(60)
@@ -163,13 +181,11 @@ th = list()
 th.append((threading.Thread(target = observe_ranking, daemon = True), True))
 th.append((threading.Thread(target = observe_status, daemon = True), True))
 th.append((threading.Thread(target = observe_user, daemon = True), True))
+th.append((threading.Thread(target = calculate_tier, daemon = True), True))
 th.append((threading.Thread(target = autosave_data, daemon = True), False))
 
 print('Importing data...')
 import_data()
-
-print('Preprocessing data...')
-preprocess()
 
 print('Starting threads...')
 alive = True
