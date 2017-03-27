@@ -75,7 +75,7 @@ def observe_ranking():
 	while alive:
 		z = 'observe ranking (%d)' % p
 		try:
-			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 1).content.split(b'<a href="/user/')
+			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 5).content.split(b'<a href="/user/')
 			n = len(r)
 			if n == 1:
 				p = 1
@@ -95,7 +95,7 @@ def observe_status():
 	while alive:
 		try:
 			T = time.time()
-			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 1).content.split(b'<tr')
+			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 5).content.split(b'<tr')
 			for i in range(21, 1, -1):
 				t = r[i]
 				i = t.find(b'/user/')
@@ -117,6 +117,7 @@ def _observe_user():
 		try:
 			lock.acquire()
 			if not users_tmp:
+				lock.acquire()
 				return
 			u = users_tmp[-1]
 			users_tmp.pop()
@@ -138,7 +139,7 @@ def observe_user():
 	global users_tmp
 	while alive:
 		users_tmp = list(users.keys())
-		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(4)]
+		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(8)]
 		for t in th:
 			t.start()
 		for t in th:
