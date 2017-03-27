@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json
+import flask, requests, threading, time, json, math
 
 app = flask.Flask(__name__)
 
@@ -34,7 +34,7 @@ def user(u):
 		return ''
 	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1])) for x in recents[users[u]])
-	return flask.render_template('user.html', u = u, r = r if u in users else []).replace('\n', '')
+	return flask.render_template('user.html', u = u, t = tiers[users[u]], r = r).replace('\n', '')
 
 ########
 # Data
@@ -172,9 +172,10 @@ def calculate_tier():
 			r = 0
 			for t in z:
 				r = r * .99 + t
-			tiers[i] = r
+			tiers[i] = '%.2f' % (math.log1p(r) / math.log1p(100000000) * 10)
+			z = 1 - 0.99 ** len(x)
 			for y in x:
-				diffs_tmp[y] += 1 / (r * r)
+				diffs_tmp[y] += z / (r * r)
 		for i in range(20000):
 			diffs[i] = 1 / diffs_tmp[i] ** .125 if diffs_tmp[i] else 1
 			diffs_tmp[i] = 0
