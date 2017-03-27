@@ -47,6 +47,7 @@ def add_user(u):
 		users[u] = len(users)
 		recents.append(list())
 		corrects.append(set())
+		tiers.append(0)
 
 def add_correct(x, p):
 	corrects[x].add(p)
