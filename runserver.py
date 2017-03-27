@@ -167,17 +167,16 @@ def calculate_tier():
 			lock.acquire()
 			x = list(corrects[i])
 			lock.release()
-			z = [diffs[y] ** 3 for y in x]
+			z = [math.expm1(diffs[y]) for y in x]
 			z.sort()
 			r = 0
 			for t in z:
 				r = r * .99 + t
-			tiers[i] = '%.2f' % (math.log1p(r) / math.log1p(100000000) * 10)
-			z = 1 - 0.99 ** len(x)
+			tiers[i] = int(math.log1p(r) * 2280)
 			for y in x:
-				diffs_tmp[y] += z / (r * r)
+				diffs_tmp[y] += 1 / r
 		for i in range(20000):
-			diffs[i] = 1 / diffs_tmp[i] ** .125 if diffs_tmp[i] else 1
+			diffs[i] = math.log1p(1 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
 			diffs_tmp[i] = 0
 #		print('calculate tier - success')
 
