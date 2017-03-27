@@ -34,6 +34,7 @@ def add_user(u):
 
 def add_correct(x, p):
 	corrects[x].add(p)
+	solvers[p].add(x)
 
 def add_recent(x, p, t):
 	if not is_correct(x, p):
@@ -51,6 +52,13 @@ def import_data():
 	with open('data/corrects.txt', 'r') as f:
 		corrects = list(map(set, json.loads(f.read())))
 
+def preprocess():
+	global solvers
+	solvers = [set() for _ in range(20000)]
+	for x in range(len(users)):
+		for y in corrects[x]:
+			solvers[y].add(x)
+
 def export_data():
 	with open('data/users.txt', 'w') as f:
 		f.write(json.dumps(users))
@@ -67,7 +75,7 @@ def observe_ranking():
 	while alive:
 		z = 'observe ranking (%d)' % p
 		try:
-			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout =1).content.split(b'<a href="/user/')
+			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 1).content.split(b'<a href="/user/')
 			n = len(r)
 			if n == 1:
 				p = 1
@@ -104,6 +112,39 @@ def observe_status():
 			print(z, '-', e)
 		time.sleep(1)
 
+def _observe_user():
+	while alive:
+		try:
+			lock.acquire()
+			if not users_tmp:
+				return
+			u = users_tmp[-1]
+			users_tmp.pop()
+			z = 'observe user (%d, %s)' % (len(users_tmp), u)
+			lock.release()
+			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 1).content
+			r = r[r.find(b'<div class = "panel-body">'):]
+			r = r[:r.find(b'</div>')].split(b'<a href = "/problem/')
+			n = len(r)
+			corrects[users[u]] = set(int(t[:t.find(b'"')]) for t in r[1::2])
+			print(z, '-', 'success')
+		except Exception as e:
+			lock.acquire()
+			users_tmp.append(u)
+			lock.release()
+			print(z, '-', e)
+
+def observe_user():
+	global users_tmp
+	while alive:
+		users_tmp = list(users.keys())
+		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(4)]
+		for t in th:
+			t.start()
+		for t in th:
+			t.join()
+		print('observe status - finished')
+
 def autosave_data():
 	z = 'autosave data'
 	while alive:
@@ -116,13 +157,18 @@ def autosave_data():
 
 s = requests.session()
 
+lock = threading.Lock()
 th = list()
 th.append((threading.Thread(target = observe_ranking, daemon = True), True))
 th.append((threading.Thread(target = observe_status, daemon = True), True))
+th.append((threading.Thread(target = observe_user, daemon = True), True))
 th.append((threading.Thread(target = autosave_data, daemon = True), False))
 
 print('Importing data...')
 import_data()
+
+print('Preprocessing data...')
+preprocess()
 
 print('Starting threads...')
 alive = True
