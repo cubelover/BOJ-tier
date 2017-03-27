@@ -117,7 +117,7 @@ def _observe_user():
 		try:
 			lock.acquire()
 			if not users_tmp:
-				lock.acquire()
+				lock.release()
 				return
 			u = users_tmp[-1]
 			users_tmp.pop()
