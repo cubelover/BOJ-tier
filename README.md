@@ -7,3 +7,13 @@
 - [ ] 유저 등급 기능
 - [ ] 문제 난이도 기능
 - [ ] 문제 난이도 확장 프로그램
+
+<br>
+
+--------
+
+*BOJ-tier* is primarily distributed under the terms of the [GNU Affero General
+Public License v3.0] or any later version. See [COPYRIGHT] for details.
+
+[GNU Affero General Public License v3.0]: LICENSE
+[COPYRIGHT]: COPYRIGHT
