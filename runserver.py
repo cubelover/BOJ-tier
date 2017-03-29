@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json, math, traceback
+import flask, requests, threading, time, json, math, random, traceback
 import settings
 
 app = flask.Flask(__name__)
@@ -212,6 +212,8 @@ alive = True
 for t, f in th:
 	t.start()
 
+if settings.secret_key == 'qOBJEdA3VfGpaq992oe4':
+	print('-*- Please change settings.secret_key! ex) %s' % ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz') for _ in range(20)))
 app.secret_key = settings.secret_key
 app.run('localhost', 5000)
 
