@@ -109,7 +109,9 @@ def observe_ranking():
 			for i in range(1, n):
 				t = r[i]
 				u = t[:t.index(b'"')].decode('utf-8')
+				lock.acquire()
 				add_user(u)
+				lock.release()
 		except Exception as e:
 			traceback.print_tb(e.__traceback__)
 		time.sleep(5)
@@ -121,15 +123,17 @@ def observe_status():
 			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 5).content.split(b'<tr')
 			for i in range(21, 1, -1):
 				t = r[i]
-				i = t.index(b'/user/')
+				i = t.find(b'/user/')
 				if i == -1:
 					continue
 				t = t[i + 6:]
 				u = t[:t.index(b'"')].decode('utf-8')
 				t = t[t.index(b'/problem/') + 9:]
 				p = int(t[:t.index(b'"')])
+				lock.acquire()
 				add_user(u)
 				add_recent(users[u], p, T)
+				lock.release()
 		except Exception as e:
 			traceback.print_tb(e.__traceback__)
 		time.sleep(1)
@@ -148,7 +152,9 @@ def _observe_user():
 			r = r[r.index(b'<div class = "panel-body">'):]
 			r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
 			n = len(r)
+			lock.acquire()
 			corrects[users[u]] = set(int(t[:t.index(b'"')]) for t in r[1::2])
+			lock.release()
 		except Exception as e:
 			lock.acquire()
 			users_tmp.append(u)
@@ -158,7 +164,9 @@ def _observe_user():
 def observe_user():
 	global users_tmp
 	while alive:
+		lock.acquire()
 		users_tmp = list(users.keys())
+		lock.release()
 		th = [threading.Thread(target = _observe_user, daemon = True) for _ in range(4)]
 		for t in th:
 			t.start()
