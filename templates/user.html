@@ -7,7 +7,7 @@
 <div class="content">
 <h2 class="content-subhead">Recent Corrects</h2>
 {% for p in r %}
-<p><a href="https://www.acmicpc.net/problem/{{ p[0] }}">{{ p[0] }}</a> - {{ p[1] }}</p>
+<p><a{{ p[2]|safe }} href="https://www.acmicpc.net/problem/{{ p[0] }}">{{ p[0] }}</a> - {{ p[1] }}</p>
 {% endfor %}
 </div>
 {% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>Login</h1>
+<h2>Enter your id to login</h2>
+</div>
+<div class="content">
+<form method="post">
+<p>ID: <input type="text" name="id" value="{{ session.get('id', '') }}"></p>
+</form>
+</div>
+{% endblock %}

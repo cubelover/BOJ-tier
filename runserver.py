@@ -33,8 +33,19 @@ def user(u):
 	if u not in users:
 		return ''
 	t = time.time()
-	r = list((x[0], delta_to_str(t - x[1])) for x in recents[users[u]])
+	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if flask.session.get('id', '') in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]])
 	return flask.render_template('user.html', u = u, t = tiers[users[u]], r = r).replace('\n', '')
+
+@app.route('/login/', methods = ['GET', 'POST'])
+def login():
+	if flask.request.method == 'POST':
+		flask.session['id'] = flask.request.form.get('id', '')
+		return flask.redirect(flask.url_for('login'))
+	return flask.render_template('login.html').replace('\n', '')
+
+@app.route('/easy/<u>/')
+def easy(u):
+	return ''
 
 ########
 # Data
@@ -208,6 +219,8 @@ print('Starting threads...')
 alive = True
 for t, f in th:
 	t.start()
+
+app.secret_key = 'TnR]ev6/ Sc|CnEB,gJhsgp~<i14>!@I5?k#)h"L-t3aHLk6:&O5IfNUe?)BT/~~&p SF2-kh0ow x7b`.cx8KM$C20Q#0RfGSRKC.FBqYYBUHcS)G _v^Cku~b#Qpm#=QSXy=7urB]~BJh0(T@rC99wyXZU#(YVLchFcK3u)wi5~Od 5`D9\'PN4c,-6bs3EekLqve}E8ihRdPIN-MF%n=\\X> N_eKZ2c\\#Y]l{EAtQ8D`\'8-PZb|VC;:ha7e.\\='
 app.run('localhost', 5000)
 
 print('Waiting for threads to die...')

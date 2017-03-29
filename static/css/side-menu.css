@@ -254,3 +254,7 @@ a {
     text-decoration: none;
 }
 
+a.correct {
+    color: #00aa55;
+    font-weight: bold;
+}
