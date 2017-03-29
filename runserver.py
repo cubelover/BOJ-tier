@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json, math
+import flask, requests, threading, time, json, math, traceback
+import settings
 
 app = flask.Flask(__name__)
 
@@ -98,7 +99,6 @@ def export_data():
 def observe_ranking():
 	p = 1
 	while alive:
-		z = 'observe ranking (%d)' % p
 		try:
 			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 5).content.split(b'<a href="/user/')
 			n = len(r)
@@ -110,13 +110,11 @@ def observe_ranking():
 				t = r[i]
 				u = t[:t.index(b'"')].decode('utf-8')
 				add_user(u)
-#			print(z, '-', 'success')
 		except Exception as e:
-			print(z, '-', e)
+			traceback.print_tb(e.__traceback__)
 		time.sleep(5)
 
 def observe_status():
-	z = 'observe status'
 	while alive:
 		try:
 			T = time.time()
@@ -132,9 +130,8 @@ def observe_status():
 				p = int(t[:t.index(b'"')])
 				add_user(u)
 				add_recent(users[u], p, T)
-#			print(z, '-', 'success')
 		except Exception as e:
-			print(z, '-', e)
+			traceback.print_tb(e.__traceback__)
 		time.sleep(1)
 
 def _observe_user():
@@ -146,19 +143,17 @@ def _observe_user():
 				return
 			u = users_tmp[-1]
 			users_tmp.pop()
-			z = 'observe user (%d, %s)' % (len(users_tmp), u)
 			lock.release()
 			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30).content
 			r = r[r.index(b'<div class = "panel-body">'):]
 			r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
 			n = len(r)
 			corrects[users[u]] = set(int(t[:t.index(b'"')]) for t in r[1::2])
-#			print(z, '-', 'success')
 		except Exception as e:
 			lock.acquire()
 			users_tmp.append(u)
 			lock.release()
-			print(z, '-', e)
+			traceback.print_tb(e.__traceback__)
 
 def observe_user():
 	global users_tmp
@@ -169,7 +164,7 @@ def observe_user():
 			t.start()
 		for t in th:
 			t.join()
-		print('observe status - finished')
+		print('observe user - finished')
 
 def calculate_tier():
 	global diffs
@@ -190,16 +185,13 @@ def calculate_tier():
 		for i in range(20000):
 			diffs[i] = math.log1p(1 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
 			diffs_tmp[i] = 0
-#		print('calculate tier - success')
 
 def autosave_data():
-	z = 'autosave data'
 	while alive:
 		try:
 			export_data()
-#			print(z, '-', 'success')
 		except Exception as e:
-			print(z, '-', e)
+			traceback.print_tb(e.__traceback__)
 		time.sleep(60)
 
 s = requests.session()
@@ -220,7 +212,7 @@ alive = True
 for t, f in th:
 	t.start()
 
-app.secret_key = 'TnR]ev6/ Sc|CnEB,gJhsgp~<i14>!@I5?k#)h"L-t3aHLk6:&O5IfNUe?)BT/~~&p SF2-kh0ow x7b`.cx8KM$C20Q#0RfGSRKC.FBqYYBUHcS)G _v^Cku~b#Qpm#=QSXy=7urB]~BJh0(T@rC99wyXZU#(YVLchFcK3u)wi5~Od 5`D9\'PN4c,-6bs3EekLqve}E8ihRdPIN-MF%n=\\X> N_eKZ2c\\#Y]l{EAtQ8D`\'8-PZb|VC;:ha7e.\\='
+app.secret_key = settings.secret_key
 app.run('localhost', 5000)
 
 print('Waiting for threads to die...')
