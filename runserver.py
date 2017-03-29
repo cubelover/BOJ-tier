@@ -97,7 +97,7 @@ def observe_ranking():
 			p += 1
 			for i in range(1, n):
 				t = r[i]
-				u = t[:t.find(b'"')].decode('utf-8')
+				u = t[:t.index(b'"')].decode('utf-8')
 				add_user(u)
 #			print(z, '-', 'success')
 		except Exception as e:
@@ -112,13 +112,13 @@ def observe_status():
 			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 5).content.split(b'<tr')
 			for i in range(21, 1, -1):
 				t = r[i]
-				i = t.find(b'/user/')
+				i = t.index(b'/user/')
 				if i == -1:
 					continue
 				t = t[i + 6:]
-				u = t[:t.find(b'"')].decode('utf-8')
-				t = t[t.find(b'/problem/') + 9:]
-				p = int(t[:t.find(b'"')])
+				u = t[:t.index(b'"')].decode('utf-8')
+				t = t[t.index(b'/problem/') + 9:]
+				p = int(t[:t.index(b'"')])
 				add_user(u)
 				add_recent(users[u], p, T)
 #			print(z, '-', 'success')
@@ -138,10 +138,10 @@ def _observe_user():
 			z = 'observe user (%d, %s)' % (len(users_tmp), u)
 			lock.release()
 			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30).content
-			r = r[r.find(b'<div class = "panel-body">'):]
-			r = r[:r.find(b'</div>')].split(b'<a href = "/problem/')
+			r = r[r.index(b'<div class = "panel-body">'):]
+			r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
 			n = len(r)
-			corrects[users[u]] = set(int(t[:t.find(b'"')]) for t in r[1::2])
+			corrects[users[u]] = set(int(t[:t.index(b'"')]) for t in r[1::2])
 #			print(z, '-', 'success')
 		except Exception as e:
 			lock.acquire()
