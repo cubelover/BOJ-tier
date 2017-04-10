@@ -77,6 +77,17 @@ def recommend():
 	return flask.render_template('recommend.html', u = u, t = y, ay = ay, a = _recommend(x, ay), by = by, b = _recommend(x, by), cy = cy, c = _recommend(x, cy)).replace('\n', '')
 
 ########
+# Api
+
+@app.route('/api/user_tp/', methods = ['POST'])
+def api_user_tp():
+	return flask.jsonify([tiers[users[u]] for u in flask.request.get_json()])
+
+@app.route('/api/prob_tp/', methods = ['POST'])
+def api_prob_tp():
+	return flask.jsonify([diffs[p] * 13 / 6 for p in flask.request.get_json()])
+
+########
 # Data
 
 def is_correct(x, p):
