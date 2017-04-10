@@ -44,9 +44,21 @@ def login():
 		return flask.redirect(flask.url_for('login'))
 	return flask.render_template('login.html').replace('\n', '')
 
-@app.route('/easy/<u>/')
-def easy(u):
-	return ''
+@app.route('/recommend/')
+def recommend():
+	u = flask.session.get('id', '')
+	if not u:
+		return flask.redirect(flask.url_for('login'))
+	if u not in users:
+		return ''
+	x = users[u]
+	r = list()
+	for q, p in order:
+		if not is_correct(x, p):
+			r.append((p, q))
+		if len(r) == 20:
+			break
+	return flask.render_template('recommend.html', u = u, t = tiers[users[u]], r = r).replace('\n', '')
 
 ########
 # Data
@@ -104,6 +116,7 @@ def observe_ranking():
 			n = len(r)
 			if n == 1:
 				p = 1
+				print('observe ranking - finished')
 				continue
 			p += 1
 			for i in range(1, n):
@@ -151,14 +164,19 @@ def _observe_user():
 			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30).content
 			r = r[r.index(b'<div class = "panel-body">'):]
 			r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
-			n = len(r)
+			tmp = set(int(t[:t.index(b'"')]) for t in r[1::2])
 			lock.acquire()
-			corrects[users[u]] = set(int(t[:t.index(b'"')]) for t in r[1::2])
+			plus = tmp - corrects[users[u]]
+			minus = corrects[users[u]] - tmp
+			corrects[users[u]] = tmp
 			lock.release()
+			if plus or minus:
+				print(u, plus, minus)
 		except Exception as e:
 			lock.acquire()
 			users_tmp.append(u)
 			lock.release()
+			print('observe user (%s) - ' % u, e)
 			traceback.print_tb(e.__traceback__)
 
 def observe_user():
@@ -175,7 +193,7 @@ def observe_user():
 		print('observe user - finished')
 
 def calculate_tier():
-	global diffs
+	global diffs, order
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
 		for i in range(len(users)):
@@ -187,12 +205,16 @@ def calculate_tier():
 			r = 0
 			for t in z:
 				r = r * .99 + t
-			tiers[i] = int(math.log1p(r) * 2280)
+			tiers[i] = math.log1p(r) * 2280
 			for y in x:
 				diffs_tmp[y] += 1 / r
+		order_tmp = []
 		for i in range(20000):
 			diffs[i] = math.log1p(1 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
+			if diffs_tmp[i]:
+				order_tmp.append((diffs[i] * 91 / 20, i))
 			diffs_tmp[i] = 0
+		order = sorted(order_tmp)
 
 def autosave_data():
 	while alive:
