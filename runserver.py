@@ -71,7 +71,10 @@ def recommend():
 	x = users[u]
 	y = tiers[x]
 	z = math.expm1(y / 2280) / 100
-	return flask.render_template('recommend.html', u = u, t = y, a = _recommend(x, math.log1p(z * 4 / 5) * 13 / 6), b = _recommend(x, math.log1p(z) * 13 / 6), c = _recommend(x, math.log1p(z * 5 / 4) * 13 / 6)).replace('\n', '')
+	ay = math.log1p(z * 4 / 5) * 13 / 6
+	by = math.log1p(z) * 13 / 6
+	cy = math.log1p(z * 5 / 4) * 13 / 6
+	return flask.render_template('recommend.html', u = u, t = y, ay = ay, a = _recommend(x, ay), by = by, b = _recommend(x, by), cy = cy, c = _recommend(x, cy)).replace('\n', '')
 
 ########
 # Data
