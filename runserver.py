@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json, math, random, traceback
+import flask, requests, threading, time, json, math, random, traceback, bisect
 import settings
 
 app = flask.Flask(__name__)
@@ -44,6 +44,23 @@ def login():
 		return flask.redirect(flask.url_for('login'))
 	return flask.render_template('login.html').replace('\n', '')
 
+def _recommend(x, y):
+	lock.acquire()
+	j = bisect.bisect(order, (y, ''))
+	i = j - 1
+	r = list()
+	while len(r) < 20:
+		if j == len(order) or (i >= 0 and abs(y - order[i][0]) < abs(y - order[j][0])):
+			if not is_correct(x, order[i][1]):
+				r.insert(0, (order[i][1], order[i][0]))
+			i -= 1
+		else:
+			if not is_correct(x, order[j][1]):
+				r.append((order[j][1], order[j][0]))
+			j += 1
+	lock.release()
+	return r
+
 @app.route('/recommend/')
 def recommend():
 	u = flask.session.get('id', '')
@@ -52,13 +69,9 @@ def recommend():
 	if u not in users:
 		return ''
 	x = users[u]
-	r = list()
-	for q, p in order:
-		if not is_correct(x, p):
-			r.append((p, q))
-		if len(r) == 20:
-			break
-	return flask.render_template('recommend.html', u = u, t = tiers[users[u]], r = r).replace('\n', '')
+	y = tiers[x]
+	z = math.expm1(y / 2280) / 100
+	return flask.render_template('recommend.html', u = u, t = y, a = _recommend(x, math.log1p(z * 4 / 5) * 13 / 6), b = _recommend(x, math.log1p(z) * 13 / 6), c = _recommend(x, math.log1p(z * 5 / 4) * 13 / 6)).replace('\n', '')
 
 ########
 # Data
@@ -173,9 +186,6 @@ def _observe_user():
 			if plus or minus:
 				print(u, plus, minus)
 		except Exception as e:
-			lock.acquire()
-			users_tmp.append(u)
-			lock.release()
 			print('observe user (%s) - ' % u, e)
 			traceback.print_tb(e.__traceback__)
 
@@ -212,7 +222,7 @@ def calculate_tier():
 		for i in range(20000):
 			diffs[i] = math.log1p(1 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
 			if diffs_tmp[i]:
-				order_tmp.append((diffs[i] * 91 / 20, i))
+				order_tmp.append((diffs[i] * 13 / 6, i))
 			diffs_tmp[i] = 0
 		order = sorted(order_tmp)
 
