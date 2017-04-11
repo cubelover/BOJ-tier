@@ -81,11 +81,13 @@ def recommend():
 
 @app.route('/api/user_tp/', methods = ['POST'])
 def api_user_tp():
-	return flask.jsonify([tiers[users[u]] for u in flask.request.get_json()])
+	data = flask.request.get_json(False, True)
+	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in ([] if data is None else data)])
 
 @app.route('/api/prob_tp/', methods = ['POST'])
 def api_prob_tp():
-	return flask.jsonify([diffs[p] * 13 / 6 for p in flask.request.get_json()])
+	data = flask.request.get_json(False, True)
+	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in ([] if data is None else data)])
 
 ########
 # Data
