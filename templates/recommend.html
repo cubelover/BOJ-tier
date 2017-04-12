@@ -6,8 +6,27 @@
 </div>
 <div class="content">
 <div class="pure-g">
-<div class="pure-u-1-3">
-<h2>Easy ({{ ay }})</h2>
+<div class="pure-u-1-4">
+<h2>Farming</h2>
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr>
+<th>#</th>
+<th>Difficulty</th>
+</tr>
+</thead>
+<tbody>
+{% for p, q in d %}
+<tr>
+<td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
+<td>{{ '%0.3f' % q }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<div class="pure-u-1-4">
+<h2>Easy</h2>
 <table class="pure-table pure-table-bordered">
 <thead>
 <tr>
@@ -19,14 +38,14 @@
 {% for p, q in a %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ q }}</td>
+<td>{{ '%0.3f' % q }}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 </div>
-<div class="pure-u-1-3">
-<h2>Appropriate ({{ by }})</h2>
+<div class="pure-u-1-4">
+<h2>Appropriate</h2>
 <table class="pure-table pure-table-bordered">
 <thead>
 <tr>
@@ -38,14 +57,14 @@
 {% for p, q in b %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ q }}</td>
+<td>{{ '%0.3f' % q }}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
 </div>
-<div class="pure-u-1-3">
-<h2>Challenging ({{ cy }})</h2>
+<div class="pure-u-1-4">
+<h2>Challenging</h2>
 <table class="pure-table pure-table-bordered">
 <thead>
 <tr>
@@ -57,7 +76,7 @@
 {% for p, q in c %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ q }}</td>
+<td>{{ '%0.3f' % q }}</td>
 </tr>
 {% endfor %}
 </tbody>

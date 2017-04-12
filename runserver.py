@@ -27,7 +27,7 @@ def delta_to_str(d):
 
 @app.route('/')
 def index():
-	return flask.render_template('index.html').replace('\n', '')
+	return flask.render_template('index.html', me = flask.session.get('id', '')).replace('\n', '')
 
 @app.route('/user/<u>/')
 def user(u):
@@ -35,27 +35,27 @@ def user(u):
 		return ''
 	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if flask.session.get('id', '') in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]])
-	return flask.render_template('user.html', u = u, t = tiers[users[u]], r = r).replace('\n', '')
+	return flask.render_template('user.html', me = flask.session.get('id', ''), u = u, t = tiers[users[u]], r = r).replace('\n', '')
 
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
 	if flask.request.method == 'POST':
 		flask.session['id'] = flask.request.form.get('id', '')
-		return flask.redirect(flask.url_for('login'))
-	return flask.render_template('login.html').replace('\n', '')
+		return flask.redirect(flask.url_for('index'))
+	return flask.render_template('login.html', me = flask.session.get('id', '')).replace('\n', '')
 
-def _recommend(x, y):
+def _recommend(user, diff):
 	lock.acquire()
-	j = bisect.bisect(order, (y, ''))
+	j = bisect.bisect(order, (diff, ''))
 	i = j - 1
 	r = list()
 	while len(r) < 20:
-		if j == len(order) or (i >= 0 and abs(y - order[i][0]) < abs(y - order[j][0])):
-			if not is_correct(x, order[i][1]):
+		if j == len(order) or (i >= 0 and abs(diff - order[i][0]) < abs(diff - order[j][0])):
+			if not is_correct(user, order[i][1]):
 				r.insert(0, (order[i][1], order[i][0]))
 			i -= 1
 		else:
-			if not is_correct(x, order[j][1]):
+			if not is_correct(user, order[j][1]):
 				r.append((order[j][1], order[j][0]))
 			j += 1
 	lock.release()
@@ -74,7 +74,15 @@ def recommend():
 	ay = math.log1p(z * 4 / 5) * 13 / 6
 	by = math.log1p(z) * 13 / 6
 	cy = math.log1p(z * 5 / 4) * 13 / 6
-	return flask.render_template('recommend.html', u = u, t = y, ay = ay, a = _recommend(x, ay), by = by, b = _recommend(x, by), cy = cy, c = _recommend(x, cy)).replace('\n', '')
+	dy = 0
+	return flask.render_template('recommend.html',
+		me = flask.session.get('id', ''),
+		u = u, t = y,
+		ay = ay, a = _recommend(x, ay),
+		by = by, b = _recommend(x, by),
+		cy = cy, c = _recommend(x, cy),
+		dy = dy, d = _recommend(x, dy)
+	).replace('\n', '')
 
 ########
 # Api
