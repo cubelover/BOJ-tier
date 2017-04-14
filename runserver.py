@@ -44,18 +44,18 @@ def login():
 		return flask.redirect(flask.url_for('index'))
 	return flask.render_template('login.html', me = flask.session.get('id', '')).replace('\n', '')
 
-def _recommend(user, diff):
+def _recommend(user, diff, solved=False):
 	lock.acquire()
 	j = bisect.bisect(order, (diff, ''))
 	i = j - 1
 	r = list()
 	while len(r) < 20:
 		if j == len(order) or (i >= 0 and abs(diff - order[i][0]) < abs(diff - order[j][0])):
-			if not is_correct(user, order[i][1]):
+			if (not solved) and (not is_correct(user, order[i][1])):
 				r.insert(0, (order[i][1], order[i][0]))
 			i -= 1
 		else:
-			if not is_correct(user, order[j][1]):
+			if (not solved) and (not is_correct(user, order[j][1])):
 				r.append((order[j][1], order[j][0]))
 			j += 1
 	lock.release()
@@ -84,6 +84,27 @@ def recommend():
 		dy = dy, d = _recommend(x, dy)
 	).replace('\n', '')
 
+#def make_graph(arr):
+#	scale = 8
+#	graph = [0]*1001
+#	for x in arr:
+#		for d in range(-scale, scale):
+#			if (x*100+d <= 1000) and (x*100+d >= 0): graph[int(x*100+d)] += 0.75 * (1 - d * d / scale / scale) / scale * 100
+#	return graph
+
+@app.route('/problems/')
+def problems():
+	u = flask.session.get('id', '')
+	all_data = [round(x, 2) for x, _ in order]
+	solved_data = []
+	recommend_tier = 0
+	if u in users:
+		solved_data = [round(diffs[x] * 13 / 6, 2) for x in corrects[users[u]]]
+		recommend_tier = math.log1p(math.expm1(tiers[users[u]] / 2280) / 100) * 13 / 6
+	return flask.render_template('problems.html', me = u, u = u if u else '', recommend_tier = recommend_tier,
+											  all_data = all_data, solved_data = solved_data).replace('\n', '')
+
+
 ########
 # Api
 
@@ -96,6 +117,21 @@ def api_user_tp():
 def api_prob_tp():
 	data = flask.request.get_json(False, True)
 	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in ([] if data is None else data)])
+
+@app.route('/api/prob_list')
+def api_prob_list():
+	tp = flask.request.args.get('tp')
+	unsolved = flask.request.args.get('solved')
+	if tp is None: tp = 0
+	else: tp = float(tp)
+	if unsolved is None: unsolved = False
+	u = flask.session.get('id', '')
+	if u not in users:
+		u=0
+		unsolved = True
+	else:
+		u = users[u]
+	return flask.jsonify(_recommend(u, tp, unsolved))
 
 ########
 # Data

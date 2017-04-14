@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block content %}
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<div class="header">
+    <h1>Problems</h1>
+    <h2>{{u}}</h2>
+</div>
+<div class="content">
+    <h2>Chart</h2>
+    <div>
+        <svg id="graph" width="100%"></svg>
+    </div>
+
+    <h2>Problems</h2>
+    <table class="pure-table pure-table-bordered" id="problem_list">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Difficulty</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+<script>
+    var raw_all = {{all_data}};
+    var raw_solved = {{solved_data}};
+    var recommended_tier = {{ recommend_tier }};
+</script>
+
+<link rel="stylesheet" type="text/css" href="/static/css/chart.css">
+<script>
+
+    var x = Array(1001);
+    for(var i=0; i<=1000; i++) x[i] = i * 0.01;
+
+    var graph_all = epanechnikovKDE(raw_all, 8);
+    var graph_solved = epanechnikovKDE(raw_solved, 8);
+    var y_max = Math.max.apply(null,graph_all) * 1.1;
+
+    var svg = d3.select('#graph');
+    var margin = {top: 10, right: 20, bottom: 50, left: 40};
+    var width = svg.node().getBoundingClientRect().width - margin.left - margin.right,
+        height = width * 0.6;
+    svg.attr('height', height + margin.top + margin.bottom);
+    var graph = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    graph.attr('width', width).attr('height', height);
+
+    var x = d3.scaleLinear().range([0,width]).domain([0, 10]);
+    var y = d3.scaleLinear().range([height, 0]).domain([0, y_max]);
+    var line = d3.line().x( (t, i) => x(i*0.01) ).y( t => y(t) );
+
+    var datas = [graph_all, graph_solved];
+
+    var xAxis = d3.axisBottom(x),
+        yAxis = d3.axisLeft(y)
+        .tickSizeInner(-width)
+        .tickSizeOuter(0)
+        .tickPadding(10);
+
+    graph.append('g').call(xAxis)
+        .attr("transform", "translate(0," + height + ")");
+    graph.append('g').attr('class', 'y axis').call(yAxis);
+
+    setData();
+
+    var tooltip = graph.append("g").call(guideLine).attr('id', 'cursor_line');
+    var nowtp = graph.append("g").call(guideLine).attr('id', 'selected_line');
+    nowtp.style("visibility", "visible");
+    var recommendLine = graph.append("g").call(guideLine).attr('id', 'rec_line');
+    recommendLine.style("visibility", "visible");
+    recommendLine.call(guidelineSetPosiotion, x(recommended_tier));
+
+
+    graph.append('rect').attr('width', width).attr('height', height).style('opacity', 0).attr('pointer-events', 'all')
+        .on("mouseover", function(){
+            return tooltip.style("visibility", "visible");
+        })
+        .on("mousemove", function() {
+            var cord = d3.mouse(tooltip.node().parentElement);
+            return guidelineSetPosiotion(tooltip, cord[0]);
+        })
+        .on("mouseout", function(){
+            return tooltip.style("visibility", "hidden");
+        })
+        .on("click", function(){
+            var cord = d3.mouse(nowtp.node().parentElement);
+            setProbTP(x.invert(cord[0]));
+            return guidelineSetPosiotion(nowtp, cord[0]);
+        });
+
+    function setProbTP(tp){
+        $.getJSON("/api/prob_list?tp=" + tp, function(data){
+            var tbody = $('#problem_list tbody');
+            tbody.empty();
+            for(var i in data){
+                tbody.append('<tr><td><a href="https://www.acmicpc.net/problem/' + data[i][0] + '">' + data[i][0] + '</a></td><td>' + data[i][1] + '</td></tr>');
+            }
+        });
+    }
+
+    function setData(){
+        graph.selectAll('.graph_line').data(datas)
+            .enter().append('path').attr('class', 'graph_line').attr('d', line);
+        graph.selectAll('.graph_line').attr("stroke",  d3.scaleOrdinal(d3.schemeCategory10));
+    }
+
+    function guidelineSetPosiotion(obj, cord){
+        var loc = Math.round(x.invert(cord)*100);
+        return obj.attr("transform", "translate("+cord+",0)")
+            .call(renderTooltipPoint, loc);
+    }
+
+    function renderTooltipPoint(line, loc) {
+        line.selectAll('circle').data(datas).enter().append('circle');
+        line.selectAll('circle').attr('r', 3)
+            .attr("fill", d3.scaleOrdinal(d3.schemeCategory10))
+            .attr("cy", (t) => y(t[loc]));
+        return line;
+    }
+
+    function guideLine(obj){
+        obj.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', height)
+            .attr("class", 'guide_line');
+        guidelineSetPosiotion(obj, 0);
+        obj.style("visibility", "hidden");
+        return obj;
+    }
+
+    function epanechnikovKDE(raw, scale){
+        var graph = Array(1001);
+        graph.fill(0);
+        for(var x in raw){
+            for(var d = -scale; d <= scale; d++){
+                var l = Math.round(raw[x]*100+d);
+                if(l < 0 || l > 1000) continue;
+                graph[l] += .75 * (1 - d * d / scale / scale) / scale * 100;
+            }
+        }
+        return graph;
+    }
+
+</script>
+
+{% endblock %}
