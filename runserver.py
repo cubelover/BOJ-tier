@@ -116,7 +116,7 @@ def api_user_tp():
 @app.route('/api/prob_tp/', methods = ['POST'])
 def api_prob_tp():
 	data = flask.request.get_json(False, True)
-	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in ([] if data is None else data)])
+	return flask.jsonify([(diffs[p]  * 13 / 6 if p < len(diffs) else 0) for p in ([] if data is None else data)])
 
 @app.route('/api/prob_list')
 def api_prob_list():
