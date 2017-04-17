@@ -1,0 +1,29 @@
+
+.tick line{
+    opacity: 0.2;
+}
+
+.graph_line{
+    fill: none;
+    stroke-width: 1.5;
+}
+
+.guide_line line{
+    stroke-width: 2;
+}
+
+.guide_line circle{
+    stroke: none;
+}
+
+#cursor_line line{
+    stroke: rgba(255,0,0,0.5);
+}
+
+#rec_line line{
+    stroke: rgba(0,255,0,0.5);
+}
+
+#selected_line line{
+    stroke: rgba(0,0,255,0.5);
+}
