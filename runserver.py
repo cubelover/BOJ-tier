@@ -101,8 +101,9 @@ def problems():
 	if u in users:
 		solved_data = [round(diffs[x] * 13 / 6, 2) for x in corrects[users[u]]]
 		recommend_tier = math.log1p(math.expm1(tiers[users[u]] / 2280) / 100) * 13 / 6
-	return flask.render_template('problems.html', me = u, u = u if u else '', recommend_tier = recommend_tier,
-											  all_data = all_data, solved_data = solved_data).replace('\n', '')
+	return flask.render_template('problems.html',
+			me = u, u = u if u else '', recommend_tier = recommend_tier, 
+			all_data = all_data, solved_data = solved_data).replace('\n', '')
 
 
 ########
@@ -113,25 +114,30 @@ def api_user_tp():
 	data = flask.request.get_json(False, True)
 	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in ([] if data is None else data)])
 
+def get_prob_diff(prob_number):
+	if prob_number < len(diffs):
+		return diffs[prob_number]
+	return 0
+
 @app.route('/api/prob_tp/', methods = ['POST'])
 def api_prob_tp():
 	data = flask.request.get_json(False, True)
-	return flask.jsonify([(diffs[p]  * 13 / 6 if p < len(diffs) else 0) for p in ([] if data is None else data)])
+	data = [] if data is None else data
+	return flask.jsonify([get_prob_diff(p) for p in data])
 
 @app.route('/api/prob_list')
 def api_prob_list():
 	tp = flask.request.args.get('tp')
-	unsolved = flask.request.args.get('solved')
-	if tp is None: tp = 0
-	else: tp = float(tp)
-	if unsolved is None: unsolved = False
+	solved = flask.request.args.get('solved')
+	tp = 0 if tp is None else float(tp)
+	if solved is None: solved = False
 	u = flask.session.get('id', '')
 	if u not in users:
-		u=0
-		unsolved = True
+		u = 0
+		solved = True
 	else:
 		u = users[u]
-	return flask.jsonify(_recommend(u, tp, unsolved))
+	return flask.jsonify(_recommend(u, tp, solved))
 
 ########
 # Data
