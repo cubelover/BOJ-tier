@@ -34,7 +34,7 @@ def user(u):
 	if u not in users:
 		return ''
 	t = time.time()
-	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if flask.session.get('id', '') in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]])
+	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if flask.session.get('id', '') in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]][:20])
 	return flask.render_template('user.html', me = flask.session.get('id', ''), u = u, t = tiers[users[u]], r = r).replace('\n', '')
 
 @app.route('/login/', methods = ['GET', 'POST'])
@@ -87,12 +87,12 @@ def recommend():
 ########
 # Api
 
-@app.route('/api/user_tp/', methods = ['POST'])
+@app.route('/api/user_tp/')
 def api_user_tp():
 	data = flask.request.get_json(False, True)
 	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in ([] if data is None else data)])
 
-@app.route('/api/prob_tp/', methods = ['POST'])
+@app.route('/api/prob_tp/')
 def api_prob_tp():
 	data = flask.request.get_json(False, True)
 	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in ([] if data is None else data)])
@@ -117,8 +117,6 @@ def add_recent(x, p, t):
 	if not is_correct(x, p):
 		add_correct(x, p)
 		recents[x].insert(0, (p, t))
-		while len(recents[x]) > 20:
-			recents[x].pop()
 
 def import_data():
 	global users, recents, corrects, diffs, tiers
@@ -289,3 +287,4 @@ for t, f in th:
 
 print('Exporting data...')
 export_data()
+
