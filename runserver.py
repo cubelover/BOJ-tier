@@ -110,6 +110,13 @@ def add_user(u):
 		corrects.append(set())
 		tiers.append(0)
 
+def del_user(u):
+	if u in users:
+		x = users.pop(u)
+		recents[x] = list()
+		corrects[x] = set()
+		tiers[x] = 0
+
 def add_correct(x, p):
 	corrects[x].add(p)
 
@@ -207,6 +214,11 @@ def _observe_user():
 			lock.release()
 			if plus or minus:
 				print(u, plus, minus)
+		except ValueError as e:
+			lock.acquire()
+			print('observe user (%s) - delete user' % u)
+			del_user(u)
+			lock.release()
 		except Exception as e:
 			print('observe user (%s) - ' % u, e)
 			traceback.print_tb(e.__traceback__)
