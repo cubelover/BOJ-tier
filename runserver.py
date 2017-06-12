@@ -213,7 +213,6 @@ def observe_status():
 				lock.release()
 		except Exception as e:
 			traceback.print_tb(e.__traceback__)
-		time.sleep(1)
 
 def _observe_user():
 	while alive:
