@@ -105,7 +105,7 @@ def is_correct(x, p):
 
 def add_user(u):
 	if u not in users:
-		users[u] = len(users)
+		users[u] = len(corrects)
 		recents.append(list())
 		corrects.append(set())
 		tiers.append(0)
@@ -113,9 +113,16 @@ def add_user(u):
 def del_user(u):
 	if u in users:
 		x = users.pop(u)
-		recents[x] = list()
-		corrects[x] = set()
-		tiers[x] = 0
+		y = len(users)
+		users[userid[y]] = x
+		userid[x] = userid[y]
+		userid.pop()
+		recents[x] = recents[y]
+		recents.pop()
+		corrects[x] = corrects[y]
+		corrects.pop()
+		tiers[x] = tiers[y]
+		tiers.pop()
 
 def add_correct(x, p):
 	corrects[x].add(p)
@@ -126,7 +133,7 @@ def add_recent(x, p, t):
 		recents[x].insert(0, (p, t))
 
 def import_data():
-	global users, recents, corrects, diffs, tiers
+	global users, userid, recents, corrects, diffs, rated, tiers
 	with open('data/users.txt', 'r') as f:
 		users = json.loads(f.read())
 	with open('data/recents.txt', 'r') as f:
@@ -135,9 +142,21 @@ def import_data():
 		corrects = list(map(set, json.loads(f.read())))
 	with open('data/diffs.txt', 'r') as f:
 		diffs = json.loads(f.read())
+	with open('data/rated.txt', 'r') as f:
+		rated = json.loads(f.read())
+	if len(users) != len(recents) or len(users) != len(corrects):
+		print('count is different')
+		exit(0)
 	tiers = [0 for _ in range(len(users))]
+	userid = ['' for _ in range(len(users))]
+	for x, y in users.items():
+		if userid[y]:
+			print('users contains duplicate values')
+			exit(0)
+		userid[y] = x
 
 def export_data():
+	lock.acquire()
 	with open('data/users.txt', 'w') as f:
 		f.write(json.dumps(users))
 	with open('data/recents.txt', 'w') as f:
@@ -146,6 +165,9 @@ def export_data():
 		f.write(json.dumps(list(map(list, corrects))))
 	with open('data/diffs.txt', 'w') as f:
 		f.write(json.dumps(diffs))
+	with open('data/rated.txt', 'w') as f:
+		f.write(json.dumps(rated))
+	lock.release()
 
 ########
 # Back
@@ -213,7 +235,7 @@ def _observe_user():
 			corrects[users[u]] = tmp
 			lock.release()
 			if plus or minus:
-				print(u, plus, minus)
+				print(time.strftime('[%Y-%m-%d %H:%M:%S]'), u, plus, minus)
 		except ValueError as e:
 			lock.acquire()
 			print('observe user (%s) - delete user' % u)
@@ -236,13 +258,29 @@ def observe_user():
 			t.join()
 		print('observe user - finished')
 
+def observe_prob():
+	i = 0
+	while alive:
+		if i == 20000:
+			print('observe prob - finished')
+			i = 0
+		i += 1
+		r = s.get('https://www.acmicpc.net/problem/%d' % i, timeout = 5)
+		if r.status_code == 404:
+			rated[i] = 0
+			continue
+		if r.content.find(b'label-warning') != -1:
+			rated[i] = 0
+			continue
+		rated[i] = 1	
+
 def calculate_tier():
 	global diffs, order
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
 		for i in range(len(users)):
 			lock.acquire()
-			x = list(corrects[i])
+			x = [y for y in corrects[i] if rated[y]]
 			lock.release()
 			z = [math.expm1(diffs[y]) for y in x]
 			z.sort()
@@ -271,10 +309,12 @@ def autosave_data():
 s = requests.session()
 
 lock = threading.Lock()
+
 th = list()
 th.append((threading.Thread(target = observe_ranking, daemon = True), True))
 th.append((threading.Thread(target = observe_status, daemon = True), True))
 th.append((threading.Thread(target = observe_user, daemon = True), True))
+th.append((threading.Thread(target = observe_prob, daemon = True), True))
 th.append((threading.Thread(target = calculate_tier, daemon = True), True))
 th.append((threading.Thread(target = autosave_data, daemon = True), False))
 
