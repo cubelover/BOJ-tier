@@ -1,3 +1,8 @@
+import os.path
+
+if not os.path.exists('data'):
+	os.makedirs('data')
+
 with open('data/users.txt', 'w') as f:
 	f.write('{}')
 with open('data/recents.txt', 'w') as f:
