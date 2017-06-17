@@ -146,7 +146,10 @@ def import_data():
 	with open('data/rated.txt', 'r') as f:
 		rated = json.loads(f.read())
 	if len(users) != len(recents) or len(users) != len(corrects):
-		print('count is different')
+		print('count of users, recents, users or corrects is different')
+		exit(0)
+	if len(diffs) != 20000 or len(rated) != 20000:
+		print('count of diffs or rated is not 20000')
 		exit(0)
 	tiers = [0 for _ in range(len(users))]
 	userid = ['' for _ in range(len(users))]
