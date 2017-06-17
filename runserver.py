@@ -106,6 +106,7 @@ def is_correct(x, p):
 def add_user(u):
 	if u not in users:
 		users[u] = len(corrects)
+		userid.append(u)
 		recents.append(list())
 		corrects.append(set())
 		tiers.append(0)
@@ -260,10 +261,11 @@ def observe_user():
 def observe_prob():
 	i = 0
 	while alive:
-		if i == 20000:
+		if i == 19999:
 			print('observe prob - finished')
 			i = 0
-		i += 1
+		else:
+			i += 1
 		r = s.get('https://www.acmicpc.net/problem/%d' % i, timeout = 5)
 		if r.status_code == 404:
 			rated[i] = 0
@@ -277,16 +279,27 @@ def calculate_tier():
 	global diffs, order
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
-		for i in range(len(users)):
+		lock.acquire()
+		users_tmp = list(users.keys())
+		lock.release()
+		for u in users_tmp:
 			lock.acquire()
-			x = [y for y in corrects[i] if rated[y]]
+			if u not in users:
+				lock.release()
+				continue
+			x = [y for y in corrects[users[u]] if rated[y]]
 			lock.release()
 			z = [math.expm1(diffs[y]) for y in x]
 			z.sort()
 			r = 0
 			for t in z:
 				r = r * .99 + t
-			tiers[i] = math.log1p(r) * 2280
+			lock.acquire()
+			if u not in users:
+				lock.release()
+				continue
+			tiers[users[u]] = math.log1p(r) * 2280
+			lock.release()
 			for y in x:
 				diffs_tmp[y] += 1 / r
 		order_tmp = []
