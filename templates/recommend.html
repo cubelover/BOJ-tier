@@ -19,7 +19,7 @@
 {% for p, q in d %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ '%0.3f' % q }}</td>
+<td>{{ '%d.%02d' % (q // 100, q % 100) }}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -38,7 +38,7 @@
 {% for p, q in a %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ '%0.3f' % q }}</td>
+<td>{{ '%d.%02d' % (q // 100, q % 100) }}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -57,7 +57,7 @@
 {% for p, q in b %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ '%0.3f' % q }}</td>
+<td>{{ '%d.%02d' % (q // 100, q % 100) }}</td>
 </tr>
 {% endfor %}
 </tbody>
@@ -76,7 +76,7 @@
 {% for p, q in c %}
 <tr>
 <td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td>
-<td>{{ '%0.3f' % q }}</td>
+<td>{{ '%d.%02d' % (q // 100, q % 100) }}</td>
 </tr>
 {% endfor %}
 </tbody>
