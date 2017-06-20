@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>Ranking</h1>
+</div>
+<div class="content">
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr><th>#</th><th>User</th><th>Tier</th></tr>
+</thead>
+<tbody>
+{% for p, q, r in t %}
+<tr><td>{{ p }}</td><td>{{ q }}</td><td>{{ r // 100 }} ({{ r % 100 }}%)</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

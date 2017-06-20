@@ -31,11 +31,16 @@ def index():
 
 @app.route('/user/<u>/')
 def user(u):
+	lock.acquire()
 	if u not in users:
+		lock.release()
 		return ''
+	me = flask.session.get('id', '')
 	t = time.time()
-	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if flask.session.get('id', '') in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]][:20])
-	return flask.render_template('user.html', me = flask.session.get('id', ''), u = u, t = tiers[users[u]], r = r).replace('\n', '')
+	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]][:20])
+	t = tiers[users[u]]
+	lock.release()
+	return flask.render_template('user.html', me = me, u = u, t = t, r = r).replace('\n', '')
 
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
@@ -66,14 +71,17 @@ def recommend():
 	u = flask.session.get('id', '')
 	if not u:
 		return flask.redirect(flask.url_for('login'))
+	lock.acquire()
 	if u not in users:
+		lock.release()
 		return ''
+	lock.release()
 	x = users[u]
 	y = tiers[x]
-	z = math.expm1(y / 2280) / 100
-	ay = math.log1p(z * 4 / 5) * 13 / 6
-	by = math.log1p(z) * 13 / 6
-	cy = math.log1p(z * 5 / 4) * 13 / 6
+	z = math.expm1(y / 194) / 500
+	ay = math.log1p(z * 4) * 1608
+	by = math.log1p(z * 5) * 1608
+	cy = math.log1p(z * 25 / 4) * 1608
 	dy = 0
 	return flask.render_template('recommend.html',
 		me = flask.session.get('id', ''),
@@ -84,18 +92,65 @@ def recommend():
 		dy = dy, d = _recommend(x, dy)
 	).replace('\n', '')
 
+@app.route('/ranking/<p>/')
+def ranking(p):
+	try:
+		p = int(p) * 100
+	except:
+		p = 0
+	lock.acquire()
+	t = rankings[p:p+100]
+	lock.release()
+	return flask.render_template('ranking.html', t = [(p + i + 1, t[i][1], -t[i][0]) for i in range(len(t))]).replace('\n', '')
+
+@app.route('/problem/<p>/')
+def problem(p):
+	u = flask.session.get('id', '')
+	if u:
+		lock.acquire()
+		if u in users:
+			s = set(corrects[users[u]])
+		else:
+			s = set()
+		lock.release()
+	else:
+		s = set()
+	try:
+		p = int(p)
+		if p < 0 or p > 99:
+			p = 0
+	except:
+		p = 0
+	lock.acquire()
+	i = bisect.bisect(order, (p * 100, -1))
+	j = bisect.bisect(order, (p * 100 + 100, -1))
+	t = order[i:j]
+	lock.release()
+	x = list()
+	y = list()
+	for q, r in t:
+		(y if r in s else x).append((r, q))
+	return flask.render_template('problem.html', x = x, y = y, p = p).replace('\n', '')
+
+@app.route('/data/')
+def data():
+	lock.acquire()
+	a = [(len(corrects[users[x]]), tiers[users[x]]) for x in users]
+	lock.release()
+	return '\n'.join(map(lambda t: str(t[0]) + ',' + str(t[1]), a))
+
 ########
 # Api
 
 @app.route('/api/user_tp/')
 def api_user_tp():
 	data = flask.request.get_json(False, True)
-	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in ([] if data is None else data)])
+	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in (list() if data is None else data)])
 
 @app.route('/api/prob_tp/')
 def api_prob_tp():
 	data = flask.request.get_json(False, True)
-	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in ([] if data is None else data)])
+	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in (list() if data is None else data)])
 
 ########
 # Data
@@ -176,6 +231,11 @@ def export_data():
 ########
 # Back
 
+def Error(s, e):
+	print('>>> %s - ' % s, e)
+	traceback.print_tb(e.__traceback__)
+	print('<<<')
+
 def observe_ranking():
 	p = 1
 	while alive:
@@ -184,7 +244,7 @@ def observe_ranking():
 			n = len(r)
 			if n == 1:
 				p = 1
-				print('observe ranking - finished')
+				print('-!- observe ranking - finished')
 				continue
 			p += 1
 			for i in range(1, n):
@@ -194,7 +254,7 @@ def observe_ranking():
 				add_user(u)
 				lock.release()
 		except Exception as e:
-			traceback.print_tb(e.__traceback__)
+			Error('observe ranking', e)
 		time.sleep(5)
 
 def observe_status():
@@ -216,7 +276,7 @@ def observe_status():
 				add_recent(users[u], p, T)
 				lock.release()
 		except Exception as e:
-			traceback.print_tb(e.__traceback__)
+			Error('observe status', e)
 
 def _observe_user():
 	while alive:
@@ -241,12 +301,11 @@ def _observe_user():
 				print(time.strftime('[%Y-%m-%d %H:%M:%S]'), u, plus, minus)
 		except ValueError as e:
 			lock.acquire()
-			print('observe user (%s) - delete user' % u)
+			print('-!- observe user (%s) - delete user' % u)
 			del_user(u)
 			lock.release()
 		except Exception as e:
-			print('observe user (%s) - ' % u, e)
-			traceback.print_tb(e.__traceback__)
+			Error('observe user (%s)' % u, e)
 
 def observe_user():
 	global users_tmp
@@ -259,32 +318,30 @@ def observe_user():
 			t.start()
 		for t in th:
 			t.join()
-		print('observe user - finished')
+		print('-!- observe user - finished')
 
 def observe_prob():
 	i = 0
 	while alive:
-		if i == 19999:
-			print('observe prob - finished')
-			i = 0
-		else:
-			i += 1
-		r = s.get('https://www.acmicpc.net/problem/%d' % i, timeout = 5)
-		if r.status_code == 404:
-			rated[i] = 0
-			continue
-		if r.content.find(b'label-warning') != -1:
-			rated[i] = 0
-			continue
-		rated[i] = 1	
+		try:
+			r = s.get('https://www.acmicpc.net/problem/%d' % i, timeout = 5)
+			rated[i] = r.status_code != 404 and r.content.find(b'label-warning') == -1
+			if i == 19999:
+				print('-!- observe prob - finished')
+				i = 0
+			else:
+				i += 1
+		except Exception as e:
+			Error('observe prob', e)
 
 def calculate_tier():
-	global diffs, order
+	global diffs, order, rankings
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
 		lock.acquire()
 		users_tmp = list(users.keys())
 		lock.release()
+		rankings_tmp = list()
 		for u in users_tmp:
 			lock.acquire()
 			if u not in users:
@@ -297,21 +354,33 @@ def calculate_tier():
 			r = 0
 			for t in z:
 				r = r * .99 + t
+			r /= 5
 			lock.acquire()
 			if u not in users:
 				lock.release()
 				continue
-			tiers[users[u]] = math.log1p(r) * 2280
+			tiers[users[u]] = int(math.log1p(5 * r) * 194)
+			rankings_tmp.append((-tiers[users[u]], u))
 			lock.release()
+			if not r:
+				continue
+			r = 1 / r
 			for y in x:
-				diffs_tmp[y] += 1 / r
-		order_tmp = []
+				diffs_tmp[y] += r
+		rankings_tmp.sort()
+		lock.acquire()
+		rankings = rankings_tmp
+		lock.release()
+		order_tmp = list()
 		for i in range(20000):
-			diffs[i] = math.log1p(1 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
+			diffs[i] = math.log1p(5 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
 			if diffs_tmp[i]:
-				order_tmp.append((diffs[i] * 13 / 6, i))
+				order_tmp.append((int(diffs[i] * 1608), i))
 			diffs_tmp[i] = 0
-		order = sorted(order_tmp)
+		order_tmp.sort()
+		lock.acquire()
+		order = order_tmp
+		lock.release()
 
 def autosave_data():
 	while alive:

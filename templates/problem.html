@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>☆{{ p }}</h1>
+<h2></h2>
+</div>
+<div class="content">
+<div class="pure-g">
+<div class="pure-u-1-2">
+<h2>Unsolved</h2>
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr><th>#</th><th>☆</th></tr>
+</thead>
+<tbody>
+{% for p, q in x %}
+<tr><td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td><td>{{ '%d.%02d' % (q // 100, q % 100) }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<div class="pure-u-1-2">
+<h2>Solved</h2>
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr><th>#</th><th>☆</th></tr>
+</thead>
+<tbody>
+{% for p, q in y %}
+<tr><td><a href="https://www.acmicpc.net/problem/{{ p }}">{{ p }}</a></td><td>{{ '%d.%02d' % (q // 100, q % 100) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+</div>
+{% endblock %}
