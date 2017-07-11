@@ -216,16 +216,19 @@ def import_data():
 
 def export_data():
 	lock.acquire()
-	with open('data/users.txt', 'w') as f:
-		f.write(json.dumps(users))
-	with open('data/recents.txt', 'w') as f:
-		f.write(json.dumps(recents))
-	with open('data/corrects.txt', 'w') as f:
-		f.write(json.dumps(list(map(list, corrects))))
-	with open('data/diffs.txt', 'w') as f:
-		f.write(json.dumps(diffs))
-	with open('data/rated.txt', 'w') as f:
-		f.write(json.dumps(rated))
+	try:
+		with open('data/users.txt', 'w') as f:
+			f.write(json.dumps(users))
+		with open('data/recents.txt', 'w') as f:
+			f.write(json.dumps(recents))
+		with open('data/corrects.txt', 'w') as f:
+			f.write(json.dumps(list(map(list, corrects))))
+		with open('data/diffs.txt', 'w') as f:
+			f.write(json.dumps(diffs))
+		with open('data/rated.txt', 'w') as f:
+			f.write(json.dumps(rated))
+	except Exception as e:
+		Error('export data', e)
 	lock.release()
 
 ########
@@ -384,10 +387,7 @@ def calculate_tier():
 
 def autosave_data():
 	while alive:
-		try:
-			export_data()
-		except Exception as e:
-			traceback.print_tb(e.__traceback__)
+		export_data()
 		time.sleep(60)
 
 s = requests.session()
