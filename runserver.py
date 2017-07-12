@@ -19,6 +19,11 @@ import settings
 
 app = flask.Flask(__name__)
 
+def Error(s, e):
+	print('>>> %s - ' % s, e)
+	traceback.print_tb(e.__traceback__)
+	print('<<<')
+
 ########
 # Front
 
@@ -233,11 +238,6 @@ def export_data():
 
 ########
 # Back
-
-def Error(s, e):
-	print('>>> %s - ' % s, e)
-	traceback.print_tb(e.__traceback__)
-	print('<<<')
 
 def observe_ranking():
 	p = 1
