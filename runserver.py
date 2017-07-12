@@ -339,51 +339,59 @@ def observe_prob():
 
 def calculate_tier():
 	global diffs, order, rankings
+	cnt = 0
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
-		lock.acquire()
-		users_tmp = list(users.keys())
-		lock.release()
-		rankings_tmp = list()
-		for u in users_tmp:
+		try:
 			lock.acquire()
-			if u not in users:
-				lock.release()
-				continue
-			x = [y for y in corrects[users[u]] if rated[y]]
+			users_tmp = list(users.keys())
 			lock.release()
-			z = [math.expm1(diffs[y]) for y in x]
-			z.sort()
-			r = 0
-			for t in z:
-				r = r * .99 + t
-			r /= 5
+			rankings_tmp = list()
+			for u in users_tmp:
+				lock.acquire()
+				if u not in users:
+					lock.release()
+					continue
+				x = [y for y in corrects[users[u]] if rated[y]]
+				lock.release()
+				z = [math.expm1(diffs[y]) for y in x]
+				z.sort()
+				r = 0
+				for t in z:
+					r = r * .99 + t
+				r /= 5
+				lock.acquire()
+				if u not in users:
+					lock.release()
+					continue
+				tiers[users[u]] = int(math.log1p(5 * r) * 194)
+				rankings_tmp.append((-tiers[users[u]], u))
+				lock.release()
+				if not r:
+					continue
+				r = 1 / r
+				for y in x:
+					diffs_tmp[y] += r
+			rankings_tmp.sort()
 			lock.acquire()
-			if u not in users:
-				lock.release()
-				continue
-			tiers[users[u]] = int(math.log1p(5 * r) * 194)
-			rankings_tmp.append((-tiers[users[u]], u))
+			rankings = rankings_tmp
 			lock.release()
-			if not r:
-				continue
-			r = 1 / r
-			for y in x:
-				diffs_tmp[y] += r
-		rankings_tmp.sort()
-		lock.acquire()
-		rankings = rankings_tmp
-		lock.release()
-		order_tmp = list()
-		for i in range(20000):
-			diffs[i] = math.log1p(5 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
-			if diffs_tmp[i]:
-				order_tmp.append((int(diffs[i] * 1608), i))
-			diffs_tmp[i] = 0
-		order_tmp.sort()
-		lock.acquire()
-		order = order_tmp
-		lock.release()
+			order_tmp = list()
+			for i in range(20000):
+				diffs[i] = math.log1p(5 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
+				if diffs_tmp[i]:
+					order_tmp.append((int(diffs[i] * 1608), i))
+				diffs_tmp[i] = 0
+			order_tmp.sort()
+			lock.acquire()
+			order = order_tmp
+			lock.release()
+			cnt += 1
+			if cnt == 1000:
+				cnt = 0
+				print('-!- calculate tier - alive')
+		except Exception as e:
+			Error('calculate tier', e)
 
 def autosave_data():
 	while alive:
