@@ -43,7 +43,7 @@ def user(u):
 	me = flask.session.get('id', '')
 	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]][:20])
-	t = tiers[users[u]]
+	t = ConvTier(tiers[users[u]])
 	lock.release()
 	return flask.render_template('user.html', me = me, u = u, t = t, r = r).replace('\n', '')
 
@@ -62,11 +62,11 @@ def _recommend(user, diff):
 	while len(r) < 20:
 		if j == len(order) or (i >= 0 and abs(diff - order[i][0]) < abs(diff - order[j][0])):
 			if not is_correct(user, order[i][1]):
-				r.insert(0, (order[i][1], order[i][0]))
+				r.insert(0, (order[i][1], ConvDiff(order[i][0])))
 			i -= 1
 		else:
 			if not is_correct(user, order[j][1]):
-				r.append((order[j][1], order[j][0]))
+				r.append((order[j][1], ConvDiff(order[j][0])))
 			j += 1
 	lock.release()
 	return r
@@ -83,17 +83,17 @@ def recommend():
 	lock.release()
 	x = users[u]
 	y = tiers[x]
-	z = math.expm1(y / 194) / 500
-	ay = math.log1p(z * 4) * 1608
-	by = math.log1p(z * 5) * 1608
-	cy = math.log1p(z * 25 / 4) * 1608
+	z = y / 100
+	ay = z * 4 / 5
+	by = z
+	cy = z * 5 / 4
 	dy = 0
 	return flask.render_template('recommend.html',
 		me = flask.session.get('id', ''),
-		u = u, t = y,
-		ay = ay, a = _recommend(x, ay),
-		by = by, b = _recommend(x, by),
-		cy = cy, c = _recommend(x, cy),
+		u = u, t = ConvTier(y),
+		ay = ConvDiff(ay), a = _recommend(x, ay),
+		by = ConvDiff(by), b = _recommend(x, by),
+		cy = ConvDiff(cy), c = _recommend(x, cy),
 		dy = dy, d = _recommend(x, dy)
 	).replace('\n', '')
 
@@ -106,7 +106,7 @@ def ranking(p):
 	lock.acquire()
 	t = rankings[p:p+100]
 	lock.release()
-	return flask.render_template('ranking.html', t = [(p + i + 1, t[i][1], -t[i][0]) for i in range(len(t))]).replace('\n', '')
+	return flask.render_template('ranking.html', t = [(p + i + 1, t[i][1], ConvTier(-t[i][0])) for i in range(len(t))]).replace('\n', '')
 
 @app.route('/problem/<p>/')
 def problem(p):
@@ -127,23 +127,23 @@ def problem(p):
 	except:
 		p = 0
 	lock.acquire()
-	i = bisect.bisect(order, (p * 100, -1))
-	j = bisect.bisect(order, (p * 100 + 100, -1))
+	i = bisect.bisect(order, (ConvDiff(p * 100, True), -1))
+	j = bisect.bisect(order, (ConvDiff(p * 100 + 100, True), -1))
 	t = order[i:j]
 	lock.release()
 	x = list()
 	y = list()
 	for q, r in t:
-		(y if r in s else x).append((r, q))
+		(y if r in s else x).append((r, ConvDiff(q)))
 	return flask.render_template('problem.html', x = x, y = y, p = p).replace('\n', '')
-
+"""
 @app.route('/data/')
 def data():
 	lock.acquire()
 	a = [(len(corrects[users[x]]), tiers[users[x]]) for x in users]
 	lock.release()
 	return '\n'.join(map(lambda t: str(t[0]) + ',' + str(t[1]), a))
-
+"""
 ########
 # Api
 
@@ -165,6 +165,7 @@ def is_correct(x, p):
 
 def add_user(u):
 	if u not in users:
+		print('-!- add user (%s)' % u)
 		users[u] = len(corrects)
 		userid.append(u)
 		recents.append(list())
@@ -194,7 +195,7 @@ def add_recent(x, p, t):
 		recents[x].insert(0, (p, t))
 
 def import_data():
-	global users, userid, recents, corrects, diffs, rated, tiers
+	global users, userid, workbooks, recents, corrects, diffs, rated, tiers
 	with open('data/users.txt', 'r') as f:
 		users = json.loads(f.read())
 	with open('data/recents.txt', 'r') as f:
@@ -205,6 +206,8 @@ def import_data():
 		diffs = json.loads(f.read())
 	with open('data/rated.txt', 'r') as f:
 		rated = json.loads(f.read())
+	# with open('data/workbooks.txt', 'r') as f:
+	#	workbooks = json.loads(f.read())
 	if len(users) != len(recents) or len(users) != len(corrects):
 		print('count of users, recents, users or corrects is different')
 		exit(0)
@@ -238,6 +241,12 @@ def export_data():
 
 ########
 # Back
+
+def ConvTier(x, f = False):
+	return math.expm1(x / 194) / 5 if f else int(math.log1p(x * 5) * 194)
+
+def ConvDiff(x, f = False):
+	return math.expm1(x / 1608) / 5 if f else int(math.log1p(x * 5) * 1608)
 
 def observe_ranking():
 	p = 1
@@ -354,17 +363,16 @@ def calculate_tier():
 					continue
 				x = [y for y in corrects[users[u]] if rated[y]]
 				lock.release()
-				z = [math.expm1(diffs[y]) for y in x]
+				z = [diffs[y] for y in x]
 				z.sort()
 				r = 0
 				for t in z:
 					r = r * .99 + t
-				r /= 5
 				lock.acquire()
 				if u not in users:
 					lock.release()
 					continue
-				tiers[users[u]] = int(math.log1p(5 * r) * 194)
+				tiers[users[u]] = r
 				rankings_tmp.append((-tiers[users[u]], u))
 				lock.release()
 				if not r:
@@ -378,9 +386,9 @@ def calculate_tier():
 			lock.release()
 			order_tmp = list()
 			for i in range(20000):
-				diffs[i] = math.log1p(5 / diffs_tmp[i] ** .5) if diffs_tmp[i] else 1
+				diffs[i] = 1 / diffs_tmp[i] ** .5 if diffs_tmp[i] else 1
 				if diffs_tmp[i]:
-					order_tmp.append((int(diffs[i] * 1608), i))
+					order_tmp.append((diffs[i], i))
 				diffs_tmp[i] = 0
 			order_tmp.sort()
 			lock.acquire()
