@@ -106,7 +106,7 @@ def ranking(p):
 	lock.acquire()
 	t = rankings[p:p+100]
 	lock.release()
-	return flask.render_template('ranking.html', t = [(p + i + 1, t[i][1], ConvTier(-t[i][0])) for i in range(len(t))]).replace('\n', '')
+	return flask.render_template('ranking.html', me = flask.session.get('id', ''), t = [(p + i + 1, t[i][1], ConvTier(-t[i][0])) for i in range(len(t))]).replace('\n', '')
 
 @app.route('/problem/<p>/')
 def problem(p):
@@ -135,7 +135,7 @@ def problem(p):
 	y = list()
 	for q, r in t:
 		(y if r in s else x).append((r, ConvDiff(q)))
-	return flask.render_template('problem.html', x = x, y = y, p = p).replace('\n', '')
+	return flask.render_template('problem.html', me = flask.session.get('id', ''), x = x, y = y, p = p).replace('\n', '')
 
 @app.route('/problems/')
 def problems():
@@ -155,7 +155,7 @@ def problems():
 	lock.release()
 	for q, r in d:
 		x[ConvDiff(q) // 100][1 if r in s else 2] += 1
-	return flask.render_template('problems.html', x = x).replace('\n', '') 
+	return flask.render_template('problems.html', me = flask.session.get('id', ''), x = x).replace('\n', '') 
 
 """
 @app.route('/data/')
