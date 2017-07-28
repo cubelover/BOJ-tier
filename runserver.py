@@ -136,6 +136,27 @@ def problem(p):
 	for q, r in t:
 		(y if r in s else x).append((r, ConvDiff(q)))
 	return flask.render_template('problem.html', x = x, y = y, p = p).replace('\n', '')
+
+@app.route('/problems/')
+def problems():
+	u = flask.session.get('id', '')
+	if u:
+		lock.acquire()
+		if u in users:
+			s = set(corrects[users[u]])
+		else:
+			s = set()
+		lock.release()
+	else:
+		s = set()
+	x = list([i, 0, 0] for i in range(100))
+	lock.acquire()
+	d = list(order)
+	lock.release()
+	for q, r in d:
+		x[ConvDiff(q) // 100][1 if r in s else 2] += 1
+	return flask.render_template('problems.html', x = x).replace('\n', '') 
+
 """
 @app.route('/data/')
 def data():

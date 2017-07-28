@@ -10,7 +10,7 @@
 </thead>
 <tbody>
 {% for p, q, r in t %}
-<tr><td>{{ p }}</td><td>{{ q }}</td><td>{{ r // 100 }} ({{ r % 100 }}%)</td></tr>
+<tr><td>{{ p }}</td><td><a href="/user/{{ q }}/">{{ q }}</a></td><td>{{ r // 100 }} ({{ r % 100 }}%)</td></tr>
 {% endfor %}
 </tbody>
 </table>

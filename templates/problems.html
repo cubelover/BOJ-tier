@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>Problem Distribution</h1>
+<h2></h2>
+</div>
+<div class="content">
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr><th>☆</th><th>#</th><th></th></tr>
+</thead>
+<tbody>
+{% for p, q, r in x %}
+<tr><td><a href="/problem/{{ p }}/">{{ p }}</a></td><td>{{ q }} / {{ q + r }} ({{ q * 100 // (q + r) if q + r else 0 }}%)</td><td><div style="width:{{ (q + r) * 3 }}px; height: 20px; background-color:#ccc;"><div style="width:{{ q * 3 }}px; height: 20px; background-color:#0c0;"></div></div></td></tr>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}
