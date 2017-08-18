@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>API</h1>
+</div>
+<div class="content">
+<h2 class="content-subhead">API 사용법</h2>
+<p>모든 API는 /api/(action)?q=(data)로 접근 가능합니다. action은 원하는 API의 코드이며, data는 추가적으로 보내는 데이터를 json으로 인코딩한 것입니다.</p>
+<p>모든 API는 사전 객제를 json으로 인코딩해서 반환합니다. 이 객체는 두 개의 key를 가지며, 각각 "success"와 "result"입니다. "success"는 API 요청이 성공했을 경우 true, 실패했을 경우 false를 값으로 가집니다. "result"는 API 요청이 성공했을 경우 요청에 해당하는 결과를, 실패했을 경우 null을 값으로 가집니다.</p>
+<h2 class="content-subhead">prob</h2>
+<p>문제의 난이도와 티어 반영 여부를 반환하는 API입니다. data는 정수만으로 구성된 길이가 1024 이하인 리스트입니다. 각 정수는 값을 원하는 문제의 번호입니다.</p>
+<p>result는 data에 주어진 순서대로 각 문제의 난이도와 티어 반영 여부를 담은 사전 객체입니다. 각 사전 객체는 두 개의 key를 가지며, 각각 "diff"와 "rated"입니다. "diff"는 해당 문제의 난이도를 값으로 가집니다. "rated"는 해당 문제가 티어에 반영될 경우 true, 반영되지 않을 경우 false를 값으로 가집니다.</p>
+<p><a href="/api/prob?q=[1000,1001,2557,11929]">/api/prob?q=[1000,1001,2557,11929]</a></p>
+</div>
+{% endblock %}

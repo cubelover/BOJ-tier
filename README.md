@@ -21,6 +21,10 @@ pipenv run python runserver.py
 - [x] 문제 난이도 기능
 - [x] 유저 순위
 - [x] 문제 순위
+- [x] Prob API
+- [ ] User API
+- [ ] Prob UI
+- [ ] Ranking UI
 - [ ] 유저 페이지 디자인
 - [ ] 문제 난이도 확장 프로그램
 

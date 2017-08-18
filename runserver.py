@@ -28,7 +28,7 @@ def Error(s, e):
 # Front
 
 def delta_to_str(d):
-	return '방금 전' if d < 60 else '%d분 전' % (d // 60) if d < 3600 else '%d시간 전' % (d // 3600) if d < 86400 else '%d일 전' % (d // 86400)
+	return '방금 전' if d < 60 else '%d분 전' % (d // 60) if d < 3600 else '%d시간 전' % (d // 3600) if d < 259200 else '%d일 전' % (d // 86400)
 
 @app.route('/')
 def index():
@@ -42,7 +42,7 @@ def user(u):
 		return ''
 	me = flask.session.get('id', '')
 	t = time.time()
-	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '') for x in recents[users[u]][:20])
+	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '', ConvDiff(diffs[x[0]])) for x in recents[users[u]][:20])
 	t = ConvTier(tiers[users[u]])
 	lock.release()
 	return flask.render_template('user.html', me = me, u = u, t = t, r = r).replace('\n', '')
@@ -168,15 +168,37 @@ def data():
 ########
 # Api
 
-@app.route('/api/user_tp/')
-def api_user_tp():
-	data = flask.request.get_json(False, True)
-	return flask.jsonify([(tiers[users[u]] if u in users else 0) for u in (list() if data is None else data)])
+API_FAIL = '{"result": null, "success": false}'
 
-@app.route('/api/prob_tp/')
-def api_prob_tp():
-	data = flask.request.get_json(False, True)
-	return flask.jsonify([diffs.get(p, 0) * 13 / 6 for p in (list() if data is None else data)])
+def api_prob(data):
+	if type(data) is not list:
+		return API_FAIL
+	if len(data) > 1024:
+		return API_FAIL
+	res = list()
+	for prob in data:
+		if type(prob) is not int:
+			return API_FAIL
+		res.append({ 'diff': ConvDiff(diffs[prob]) / 100, 'rated': rated[prob] } if 0 <= prob < 20000 else { 'diff': 100.0, 'rated': False })
+	return json.dumps({ 'success': True, 'result': res })
+
+APIS = { 'prob': api_prob }
+
+@app.route('/api/')
+def api():
+	return flask.render_template('api.html', me = flask.session.get('id', '')).replace('\n', '')
+
+@app.route('/api/<action>', methods = ['GET', 'POST'])
+def api_action(action):
+	if action not in APIS:
+		return API_FAIL
+	try:
+		data = json.loads(flask.request.values.get('q', ''))
+	except:
+		return API_FAIL
+	print(data)
+	func = APIS[action]
+	return func(data)
 
 ########
 # Data
@@ -370,6 +392,7 @@ def observe_prob():
 def calculate_tier():
 	global diffs, order, rankings
 	cnt = 0
+	st = time.time()
 	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
 		try:
@@ -407,7 +430,7 @@ def calculate_tier():
 			lock.release()
 			order_tmp = list()
 			for i in range(20000):
-				diffs[i] = 1 / diffs_tmp[i] ** .5 if diffs_tmp[i] else 1
+				diffs[i] = 1 / diffs_tmp[i] ** .5 if diffs_tmp[i] else 100.26
 				if diffs_tmp[i]:
 					order_tmp.append((diffs[i], i))
 				diffs_tmp[i] = 0
@@ -418,7 +441,9 @@ def calculate_tier():
 			cnt += 1
 			if cnt == 1000:
 				cnt = 0
-				print('-!- calculate tier - alive')
+				en = time.time()
+				print('-!- calculate tier - alive (%f s)' % (en - st))
+				st = en
 		except Exception as e:
 			Error('calculate tier', e)
 
