@@ -36,10 +36,12 @@ def index():
 
 @app.route('/user/<u>/')
 def user(u):
+	u = u.lower()
 	lock.acquire()
-	if u not in users:
+	if u not in username:
 		lock.release()
 		return flask.render_template('error.html', me = flask.session.get('id', '')).replace('\n', '')
+	u = username[u]
 	me = flask.session.get('id', '')
 	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '', ConvDiff(diffs[x[0]])) for x in recents[users[u]][:20])
@@ -73,13 +75,14 @@ def _recommend(user, diff):
 
 @app.route('/recommend/')
 def recommend():
-	u = flask.session.get('id', '')
+	u = flask.session.get('id', '').lower()
 	if not u:
 		return flask.redirect(flask.url_for('login'))
 	lock.acquire()
-	if u not in users:
+	if u not in username:
 		lock.release()
 		return flask.render_template('error.html', me = flask.session.get('id', ''))
+	u = username[u]
 	x = users[u]
 	y = tiers[x]
 	lock.release()
@@ -211,6 +214,7 @@ def add_user(u):
 		print('-!- add user (%s)' % u)
 		users[u] = len(corrects)
 		userid.append(u)
+		username[u.lower()] = u
 		recents.append(list())
 		corrects.append(set())
 		tiers.append(0)
@@ -238,7 +242,7 @@ def add_recent(x, p, t):
 		recents[x].insert(0, (p, t))
 
 def import_data():
-	global users, userid, workbooks, recents, corrects, diffs, rated, tiers
+	global users, userid, username, workbooks, recents, corrects, diffs, rated, tiers
 	with open('data/users.txt', 'r') as f:
 		users = json.loads(f.read())
 	with open('data/recents.txt', 'r') as f:
@@ -259,7 +263,13 @@ def import_data():
 		exit(0)
 	tiers = [0 for _ in range(len(users))]
 	userid = ['' for _ in range(len(users))]
+	username = dict()
 	for x, y in users.items():
+		z = x.lower()
+		if z in username:
+			print('users contains duplicate keys')
+			exit(0)
+		username[z] = x
 		if userid[y]:
 			print('users contains duplicate values')
 			exit(0)
