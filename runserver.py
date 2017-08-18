@@ -39,7 +39,7 @@ def user(u):
 	lock.acquire()
 	if u not in users:
 		lock.release()
-		return ''
+		return flask.render_template('error.html', me = flask.session.get('id', '')).replace('\n', '')
 	me = flask.session.get('id', '')
 	t = time.time()
 	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '', ConvDiff(diffs[x[0]])) for x in recents[users[u]][:20])
@@ -79,10 +79,10 @@ def recommend():
 	lock.acquire()
 	if u not in users:
 		lock.release()
-		return ''
-	lock.release()
+		return flask.render_template('error.html', me = flask.session.get('id', ''))
 	x = users[u]
 	y = tiers[x]
+	lock.release()
 	z = y / 100
 	ay = z * 4 / 5
 	by = z

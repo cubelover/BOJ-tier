@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>Error</h1>
+</div>
+<div class="content">
+<h2 class="content-subhead">존재하지 않는 유저입니다</h2>
+<p>존재하지 않는 유저로 로그인한 뒤 /recommend/ 페이지에 방문하거나, 존재하지 않는 유저의 status를 보려고 할 때 발생합니다.</p>
+<p>존재하는 유저인데 이 페이지가 보이는 경우, 계정을 생성한 지 얼마 안 되었거나 아이디를 바꾸면서 DB에 아직 등록되지 않았을 수 있습니다. 이럴 때는 아무 문제나 "맞았습니다!!"를 받거나 DB에 등록될 때까지 기다려 주세요. 새 유저가 DB에 등록되기까지는 1시간 정도 걸립니다.</p>
+<p>위 경우에 모두 해당되지 않는다면 <a href="https://github.com/cubelover/BOJ-tier/issues">github Issues</a>에 제보해주시면 감사하겠습니다.</p>
+</div>
+{% endblock %}
