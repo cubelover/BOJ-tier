@@ -3,14 +3,15 @@ BOJ Tier
 문제를 풀면 등급이 올라 공부할 동기를 부여해주는 시스템
 
 ### Prerequisites
-- Python 3.4+
+- Python 3.5+
+- pipenv 5.1+
 
 ### Instruction
 ```
 # Install dependencies
 pipenv install
 
-# Prerequisites
+# Configuring
 mv settings.default.py settings.py
 pipenv run python initialize_data.py
 
