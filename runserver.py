@@ -195,10 +195,13 @@ def api():
 def api_action(action):
 	if action not in APIS:
 		return API_FAIL
-	try:
-		data = json.loads(flask.request.values.get('q', ''))
-	except:
-		return API_FAIL
+	if flask.request.is_json:
+		data = flask.request.get_json(silent = True)
+	else:
+		try:
+			data = json.loads(flask.request.values.get('q', ''))
+		except:
+			return API_FAIL
 	print(data)
 	func = APIS[action]
 	return func(data)

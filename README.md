@@ -11,8 +11,8 @@ BOJ Tier
 # Install dependencies
 pipenv install
 
-# Configuring
-mv settings.default.py settings.py
+# Configure
+cp settings.default.py settings.py
 pipenv run python initialize_data.py
 
 # Run the server
