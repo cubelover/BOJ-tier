@@ -10,6 +10,10 @@ BOJ Tier
 # Install dependencies
 pipenv install
 
+# Prerequisites
+mv settings.default.py settings.py
+pipenv run python initialize_data.py
+
 # Run the server
 pipenv run python runserver.py
 ```
