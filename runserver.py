@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json, math, random, traceback, bisect
+import flask, requests, threading, time, json, math, random, traceback, bisect, logging
 import settings
 
 app = flask.Flask(__name__)
@@ -176,14 +176,16 @@ API_FAIL = '{"result": null, "success": false}'
 def api_prob(data):
 	if type(data) is not list:
 		return API_FAIL
-	if len(data) > 1024:
-		return API_FAIL
 	res = list()
 	for prob in data:
 		if type(prob) is not int:
 			return API_FAIL
 		res.append({ 'diff': ConvDiff(diffs[prob]) / 100, 'rated': rated[prob] } if 0 <= prob < 20000 else { 'diff': 100.0, 'rated': False })
 	return json.dumps({ 'success': True, 'result': res })
+
+def api_user(data):
+	if type(data) is not list:
+		return API_FAIL
 
 APIS = { 'prob': api_prob }
 
@@ -202,7 +204,6 @@ def api_action(action):
 			data = json.loads(flask.request.values.get('q', ''))
 		except:
 			return API_FAIL
-	print(data)
 	func = APIS[action]
 	return func(data)
 
@@ -308,19 +309,21 @@ def observe_ranking():
 	p = 1
 	while alive:
 		try:
-			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 5).content.split(b'<a href="/user/')
-			n = len(r)
-			if n == 1:
-				p = 1
-				print('-!- observe ranking - finished')
-				continue
-			p += 1
-			for i in range(1, n):
-				t = r[i]
-				u = t[:t.index(b'"')].decode('utf-8')
-				lock.acquire()
-				add_user(u)
-				lock.release()
+			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 5)
+			if r.status_code == 200:
+				r = r.content.split(b'<a href="/user/')
+				n = len(r)
+				if n < 2:
+					p = 1
+					print('-!- observe ranking - finished')
+					continue
+				p += 1
+				for i in range(1, n):
+					t = r[i]
+					u = t[:t.index(b'"')].decode('utf-8')
+					lock.acquire()
+					add_user(u)
+					lock.release()
 		except Exception as e:
 			Error('observe ranking', e)
 		time.sleep(5)
@@ -329,20 +332,22 @@ def observe_status():
 	while alive:
 		try:
 			T = time.time()
-			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 5).content.split(b'<tr')
-			for i in range(21, 1, -1):
-				t = r[i]
-				i = t.find(b'/user/')
-				if i == -1:
-					continue
-				t = t[i + 6:]
-				u = t[:t.index(b'"')].decode('utf-8')
-				t = t[t.index(b'/problem/') + 9:]
-				p = int(t[:t.index(b'"')])
-				lock.acquire()
-				add_user(u)
-				add_recent(users[u], p, T)
-				lock.release()
+			r = s.get('https://www.acmicpc.net/status/?result_id=4', timeout = 5)
+			if r.status_code == 200:
+				r = r.content.split(b'<tr')
+				for i in range(21, 1, -1):
+					t = r[i]
+					i = t.find(b'/user/')
+					if i == -1:
+						continue
+					t = t[i + 6:]
+					u = t[:t.index(b'"')].decode('utf-8')
+					t = t[t.index(b'/problem/') + 9:]
+					p = int(t[:t.index(b'"')])
+					lock.acquire()
+					add_user(u)
+					add_recent(users[u], p, T)
+					lock.release()
 		except Exception as e:
 			Error('observe status', e)
 
@@ -356,22 +361,24 @@ def _observe_user():
 			u = users_tmp[-1]
 			users_tmp.pop()
 			lock.release()
-			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30).content
-			r = r[r.index(b'<div class = "panel-body">'):]
-			r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
-			tmp = set(int(t[:t.index(b'"')]) for t in r[1::2])
-			lock.acquire()
-			plus = tmp - corrects[users[u]]
-			minus = corrects[users[u]] - tmp
-			corrects[users[u]] = tmp
-			lock.release()
-			if plus or minus:
-				print(time.strftime('[%Y-%m-%d %H:%M:%S]'), u, plus, minus)
-		except ValueError as e:
-			lock.acquire()
-			print('-!- observe user (%s) - delete user' % u)
-			del_user(u)
-			lock.release()
+			r = s.get('https://www.acmicpc.net/user/%s' % u, timeout = 30)
+			if r.status_code == 200:
+				r = r.content
+				r = r[r.index(b'<div class = "panel-body">'):]
+				r = r[:r.index(b'</div>')].split(b'<a href = "/problem/')
+				tmp = set(int(t[:t.index(b'"')]) for t in r[1::2])
+				lock.acquire()
+				plus = tmp - corrects[users[u]]
+				minus = corrects[users[u]] - tmp
+				corrects[users[u]] = tmp
+				lock.release()
+				if plus or minus:
+					print(time.strftime('[%Y-%m-%d %H:%M:%S]'), u, plus, minus)
+			elif r.status_code == 404:
+				lock.acquire()
+				print('-!- observe user (%s) - delete user' % u)
+				del_user(u)
+				lock.release()
 		except Exception as e:
 			Error('observe user (%s)' % u, e)
 
@@ -393,7 +400,10 @@ def observe_prob():
 	while alive:
 		try:
 			r = s.get('https://www.acmicpc.net/problem/%d' % i, timeout = 5)
-			rated[i] = r.status_code != 404 and r.content.find(b'label-warning') == -1
+			if r.status_code == 200:
+				rated[i] = r.content.find(b'label-warning') == -1
+			elif r.status_code == 404:
+				rated[i] = False
 			if i == 19999:
 				print('-!- observe prob - finished')
 				i = 0
@@ -484,6 +494,10 @@ print('Starting threads...')
 alive = True
 for t, f in th:
 	t.start()
+
+time.sleep(5)
+
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 if settings.secret_key == 'qOBJEdA3VfGpaq992oe4':
 	print('-*- Please change settings.secret_key! ex) %s' % ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz') for _ in range(20)))
