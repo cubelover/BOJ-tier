@@ -35,6 +35,10 @@ def index():
 	return flask.render_template('index.html', me = flask.session.get('id', '')).replace('\n', '')
 
 @app.route('/tool/')
+def tools():
+	t = flask.request.args.get('t', '')
+	if t == 'prob':
+		return flask.render_template('tool_prob.html', me = flask.session.get('id', '')).replace('\n', '')
 	return flask.render_template('tool.html', me = flask.session.get('id', '')).replace('\n', '')
 
 @app.route('/user/<u>/')

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+<h1>Prob Tool</h1>
+</div>
+<div class="content">
+<p><input type="text" id="prob"></p>
+<p>
+<table class="pure-table pure-table-bordered">
+<thead>
+<tr><td>#</td><td>☆</td><td></td></tr>
+</thead>
+<tbody id="tb">
+</tbody>
+</table>
+</p>
+</div>
+{% endblock %}
+{% block javascript %}
+<script type="text/javascript">
+function k(e){let q=parseInt(e);x=new XMLHttpRequest,x.onreadystatechange=function(){if(4==this.readyState&&200==this.status&&(r=JSON.parse(this.responseText),r.success)){let t=document.createElement("tr");for(f=r.result[0].diff,d=document.createElement("td"),a=document.createElement("a"),a.href="https://www.acmicpc.net/problem/"+q,a.appendChild(document.createTextNode(q)),d.appendChild(a),t.appendChild(d),d=document.createElement("td"),d.appendChild(document.createTextNode(f.toFixed(2))),t.appendChild(d),d=document.createElement("td"),a=document.createElement("a"),a.href="#",a.onclick=function(){t.remove()},a.appendChild(document.createTextNode("삭제")),d.appendChild(a),t.appendChild(d),i=0;i<b.children.length&&parseFloat(b.children[i].children[1].textContent)<=f;i++);b.insertBefore(t,b.children[i])}},x.open("POST","https://koosa.ga/api/prob"),x.setRequestHeader("Content-Type","Application/json"),x.send(JSON.stringify([q]))}b=document.getElementById("tb"),document.getElementById("prob").onkeydown=function(e){13==e.keyCode&&(k(this.value),this.value="")};
+</script>
+{% endblock %}
+
+b = document.getElementById("tb");
+function k(p) {
+	let q = parseInt(p);
+	x = new XMLHttpRequest();
+	x.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+			r = JSON.parse(this.responseText);
+			if (r["success"]) {
+				f = r["result"][0]["diff"];
+				let t = document.createElement("tr");
+				d = document.createElement("td");
+				a = document.createElement("a");
+				a.href = "https://www.acmicpc.net/problem/" + q;
+				a.appendChild(document.createTextNode(q));
+				d.appendChild(a);
+				t.appendChild(d);
+				d = document.createElement("td");
+				d.appendChild(document.createTextNode(f.toFixed(2)));
+				t.appendChild(d);
+				d = document.createElement("td");
+				a = document.createElement("a");
+				a.href = "#";
+				a.onclick = function(){ t.remove(); }
+				a.appendChild(document.createTextNode("삭제"));
+				d.appendChild(a);
+				t.appendChild(d);
+				for (i = 0; i < b.children.length && parseFloat(b.children[i].children[1].textContent) <= f; i++);
+				b.insertBefore(t, b.children[i]);
+			}
+		}
+	};
+	x.open("POST", "https://koosa.ga/api/prob");
+	x.setRequestHeader("Content-Type", "Application/json");
+	x.send(JSON.stringify([q]));
+}
+
+document.getElementById("prob").onkeydown = function(e){
+	if (e.keyCode == 13){
+		k(this.value);
+		this.value = "";
+	}
+};
+
