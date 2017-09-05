@@ -34,6 +34,9 @@ def delta_to_str(d):
 def index():
 	return flask.render_template('index.html', me = flask.session.get('id', '')).replace('\n', '')
 
+@app.route('/tool/')
+	return flask.render_template('tool.html', me = flask.session.get('id', '')).replace('\n', '')
+
 @app.route('/user/<u>/')
 def user(u):
 	u = u.lower()
@@ -310,13 +313,12 @@ def observe_ranking():
 	while alive:
 		try:
 			r = s.get('https://www.acmicpc.net/ranklist/%d' % p, timeout = 5)
-			if r.status_code == 200:
+			if r.status_code == 404:
+				p = 1
+				print('-!- observe ranking - finished')
+			elif r.status_code == 200:
 				r = r.content.split(b'<a href="/user/')
 				n = len(r)
-				if n < 2:
-					p = 1
-					print('-!- observe ranking - finished')
-					continue
 				p += 1
 				for i in range(1, n):
 					t = r[i]
