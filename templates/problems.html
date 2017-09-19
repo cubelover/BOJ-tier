@@ -11,7 +11,7 @@
 </thead>
 <tbody>
 {% for p, q, r in x %}
-<tr><td><a href="/problem/{{ p }}/">{{ p }}</a></td><td>{{ q }} / {{ q + r }} ({{ q * 100 // (q + r) if q + r else 0 }}%)</td><td><div style="width:{{ (q + r) * 3 }}px; height: 20px; background-color:#ccc;"><div style="width:{{ q * 3 }}px; height: 20px; background-color:#0c0;"></div></div></td></tr>
+<tr><td><a href="/problem/{{ p }}/">{{ p }}</a></td><td>{{ q }} / {{ q + r }} ({{ q * 100 // (q + r) if q + r else 0 }}%)</td><td><div style="width:{{ (q + r) * 2 }}px; height: 20px; background-color:#ccc;"><div style="width:{{ q * 2 }}px; height: 20px; background-color:#0c0;"></div></div></td></tr>
 </tr>
 {% endfor %}
 </tbody>

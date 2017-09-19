@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import flask, requests, threading, time, json, math, random, traceback, bisect, logging
+import flask, requests, threading, time, json, math, random, traceback, bisect, logging, sys
 import settings
 
 app = flask.Flask(__name__)
@@ -49,12 +49,14 @@ def user(u):
 		lock.release()
 		return flask.render_template('error.html', me = flask.session.get('id', '')).replace('\n', '')
 	u = username[u]
+	x = users[u]
 	me = flask.session.get('id', '')
 	t = time.time()
-	r = list((x[0], delta_to_str(t - x[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], x[0]) else '', ConvDiff(diffs[x[0]])) for x in recents[users[u]][:20])
-	t = ConvTier(tiers[users[u]])
+	r = list((_[0], delta_to_str(t - _[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], _[0]) else '', ConvDiff(diffs[_[0]])) for _ in recents[x][:20])
+	t = ConvTier(tiers[x])
+	o = GetRanking(x)
 	lock.release()
-	return flask.render_template('user.html', me = me, u = u, t = t, r = r).replace('\n', '')
+	return flask.render_template('user.html', me = me, u = u, t = t, r = r, o = o).replace('\n', '')
 
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
@@ -178,23 +180,38 @@ def data():
 ########
 # Api
 
-API_FAIL = '{"result": null, "success": false}'
+API_FAIL = json.dumps({ 'success': False, 'result': None })
 
 def api_prob(data):
 	if type(data) is not list:
-		return API_FAIL
+		return None
 	res = list()
 	for prob in data:
 		if type(prob) is not int:
-			return API_FAIL
+			return None
 		res.append({ 'diff': ConvDiff(diffs[prob]) / 100, 'rated': rated[prob] } if 0 <= prob < 20000 else { 'diff': 100.0, 'rated': False })
-	return json.dumps({ 'success': True, 'result': res })
+	return res
 
 def api_user(data):
 	if type(data) is not list:
-		return API_FAIL
+		return None
+	res = list()
+	for u in data:
+		if type(u) is not str:
+			return None
+		u = u.lower()
+		lock.acquire()
+		if u not in username:
+			lock.release()
+			res.append({ 'userid': None, 'tier': None, 'ranking': None })
+			continue
+		u = username[u]
+		x = users[u]
+		res.append({ 'userid': u, 'tier': ConvTier(tiers[x]) / 100, 'ranking': GetRanking(x) })
+		lock.release()
+	return res
 
-APIS = { 'prob': api_prob }
+APIS = { 'prob': api_prob, 'user': api_user }
 
 @app.route('/api/')
 def api():
@@ -212,7 +229,8 @@ def api_action(action):
 		except:
 			return API_FAIL
 	func = APIS[action]
-	return func(data)
+	res = func(data)
+	return API_FAIL if res == None else json.dumps({ 'success': True, 'result': res})
 
 ########
 # Data
@@ -233,6 +251,7 @@ def add_user(u):
 def del_user(u):
 	if u in users:
 		x = users.pop(u)
+		username.pop(u.lower())
 		y = len(users)
 		users[userid[y]] = x
 		userid[x] = userid[y]
@@ -311,6 +330,9 @@ def ConvTier(x, f = False):
 
 def ConvDiff(x, f = False):
 	return math.expm1(x / 1608) / 5 if f else int(math.log1p(x * 5) * 1608)
+
+def GetRanking(x):
+	return bisect.bisect_left(rankings, (-tiers[x], ''))
 
 def observe_ranking():
 	p = 1
@@ -418,104 +440,116 @@ def observe_prob():
 		except Exception as e:
 			Error('observe prob', e)
 
+def _calculate_tier():
+	global tiers, diffs, order, rankings
+	try:
+		lock.acquire()
+		users_tmp = list(users.keys())
+		lock.release()
+		diffs_tmp = [0 for _ in range(20000)]
+		rankings_tmp = list()
+		n = len(users_tmp)
+		tiers_tmp = list()
+		for i in range(n):
+			u = users_tmp[i]
+			lock.acquire()
+			if u not in users:
+				lock.release()
+				tiers_tmp.append(0)
+				continue
+			x = [y for y in corrects[users[u]] if rated[y]]
+			lock.release()
+			z = [diffs[y] for y in x]
+			z.sort()
+			r = 0
+			for t in z:
+				r = r * .99 + t
+			tiers_tmp.append(r)
+			rankings_tmp.append((-r, u))
+			if not r:
+				continue
+			r = 1 / r
+			for y in x:
+				diffs_tmp[y] += r
+		rankings_tmp.sort()
+		lock.acquire()
+		rankings = rankings_tmp
+		for i in range(n):
+			u = users_tmp[i]
+			if u in users:
+				tiers[users[u]] = tiers_tmp[i]
+		lock.release()
+		order_tmp = list()
+		for i in range(20000):
+			diffs[i] = 1 / diffs_tmp[i] ** .5 if diffs_tmp[i] else 100.26
+			if diffs_tmp[i]:
+				order_tmp.append((diffs[i], i))
+		order_tmp.sort()
+		lock.acquire()
+		order = order_tmp
+		lock.release()
+	except Exception as e:
+		Error('calculate tier', e)
+
 def calculate_tier():
-	global diffs, order, rankings
 	cnt = 0
 	st = time.time()
-	diffs_tmp = [0 for _ in range(20000)]
 	while alive:
-		try:
-			lock.acquire()
-			users_tmp = list(users.keys())
-			lock.release()
-			rankings_tmp = list()
-			for u in users_tmp:
-				lock.acquire()
-				if u not in users:
-					lock.release()
-					continue
-				x = [y for y in corrects[users[u]] if rated[y]]
-				lock.release()
-				z = [diffs[y] for y in x]
-				z.sort()
-				r = 0
-				for t in z:
-					r = r * .99 + t
-				lock.acquire()
-				if u not in users:
-					lock.release()
-					continue
-				tiers[users[u]] = r
-				rankings_tmp.append((-tiers[users[u]], u))
-				lock.release()
-				if not r:
-					continue
-				r = 1 / r
-				for y in x:
-					diffs_tmp[y] += r
-			rankings_tmp.sort()
-			lock.acquire()
-			rankings = rankings_tmp
-			lock.release()
-			order_tmp = list()
-			for i in range(20000):
-				diffs[i] = 1 / diffs_tmp[i] ** .5 if diffs_tmp[i] else 100.26
-				if diffs_tmp[i]:
-					order_tmp.append((diffs[i], i))
-				diffs_tmp[i] = 0
-			order_tmp.sort()
-			lock.acquire()
-			order = order_tmp
-			lock.release()
-			cnt += 1
-			if cnt == 1000:
-				cnt = 0
-				en = time.time()
-				print('-!- calculate tier - alive (%f s)' % (en - st))
-				st = en
-		except Exception as e:
-			Error('calculate tier', e)
+		_calculate_tier()
+		cnt += 1
+		if cnt == 1000:
+			cnt = 0
+			en = time.time()
+			print('-!- calculate tier - alive (%f s)' % (en - st))
+			st = en
 
 def autosave_data():
 	while alive:
 		export_data()
 		time.sleep(60)
 
+MAIN = len(sys.argv) == 1
+
 s = requests.session()
 
 lock = threading.Lock()
 
-th = list()
-th.append((threading.Thread(target = observe_ranking, daemon = True), True))
-th.append((threading.Thread(target = observe_status, daemon = True), True))
-th.append((threading.Thread(target = observe_user, daemon = True), True))
-th.append((threading.Thread(target = observe_prob, daemon = True), True))
-th.append((threading.Thread(target = calculate_tier, daemon = True), True))
-th.append((threading.Thread(target = autosave_data, daemon = True), False))
-
 print('Importing data...')
 import_data()
 
-print('Starting threads...')
-alive = True
-for t, f in th:
-	t.start()
+if MAIN:
+	th = list()
+	th.append((threading.Thread(target = observe_ranking, daemon = True), True))
+	th.append((threading.Thread(target = observe_status, daemon = True), True))
+	th.append((threading.Thread(target = observe_user, daemon = True), True))
+	th.append((threading.Thread(target = observe_prob, daemon = True), True))
+	th.append((threading.Thread(target = autosave_data, daemon = True), False))
+	th.append((threading.Thread(target = calculate_tier, daemon = True), True))
 
-time.sleep(5)
+
+	print('Starting threads...')
+	alive = True
+	for t, f in th:
+		t.start()
+
+	time.sleep(5)
+else:
+	_calculate_tier()
 
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 if settings.secret_key == 'qOBJEdA3VfGpaq992oe4':
 	print('-*- Please change settings.secret_key! ex) %s' % ''.join(random.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz') for _ in range(20)))
 app.secret_key = settings.secret_key
-app.run('localhost', 5000)
+app.run('localhost', 5000 if MAIN else 8888)
 
-print('Waiting for threads to die...')
-alive = False
-for t, f in th:
-	if f:
-		t.join()
+if MAIN:
+	print('Waiting for threads to die...')
+	alive = False
+	for t, f in th:
+		if f:
+			t.join()
 
-print('Exporting data...')
-export_data()
+	print('Exporting data...')
+	export_data()
 

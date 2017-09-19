@@ -10,11 +10,19 @@
 <p>Content-Type이 Application/json이 아니고 GET parameter로 q가 주어지지 않은 경우 data는 Content의 q를 이용합니다.</p>
 <p>Content-Type이 Application/json인 경우 data는 Content를 통째로 이용합니다.</p>
 <p>모든 API는 사전 객제를 json으로 인코딩해서 반환합니다. 이 객체는 두 개의 key를 가지며, 각각 "success"와 "result"입니다. "success"는 API 요청이 성공했을 경우 true, 실패했을 경우 false를 값으로 가집니다. "result"는 API 요청이 성공했을 경우 요청에 해당하는 결과를, 실패했을 경우 null을 값으로 가집니다.</p>
+<p><strong>NGINX에서 64KB를 초과하는 요청을 거부함에 유의하세요.</strong></p>
 <h2 class="content-subhead">prob</h2>
-<p>문제의 난이도와 티어 반영 여부를 반환하는 API입니다. data는 정수만으로 구성된 길이가 1024 이하인 리스트입니다. 각 정수는 값을 원하는 문제의 번호입니다.</p>
+<p>문제의 난이도와 티어 반영 여부를 반환하는 API입니다. data는 정수만으로 구성된 리스트입니다. 각 정수는 값을 원하는 문제의 번호입니다.</p>
 <p>result는 data에 주어진 순서대로 각 문제의 난이도와 티어 반영 여부를 나타내는 사전 객체를 담은 리스트입니다. 각 사전 객체는 두 개의 key를 가지며, 각각 "diff"와 "rated"입니다. "diff"는 해당 문제의 난이도를 값으로 가집니다. "rated"는 해당 문제가 티어에 반영될 경우 true, 반영되지 않을 경우 false를 값으로 가집니다.</p>
-<p><a href="/api/prob?q=[1000,1001,2557,11929]">/api/prob?q=[1000,1001,2557,11929]</a></p>
-<p>curl https://koosa.ga/api/prob -X POST -d "q=[1000,1001,2557,11929]"</p>
-<p>curl https://koosa.ga/api/prob -X POST -d "[1000,1001,2557,11929]" -H "Content-Type: Application/json"</p>
+<p><a href="/api/prob?q=[1000,1001,2557,11929]">/api/prob?q=[1000,9999,11929]</a></p>
+<p>curl https://koosa.ga/api/prob -X POST -d "q=[1000,9999,11929]"</p>
+<p>curl https://koosa.ga/api/prob -X POST -d "[1000,9999,11929]" -H "Content-Type: Application/json"</p>
+<h2 class="content-subhead">user</h2>
+<p>유저의 아이디, 티어와 랭킹을 반환하는 API입니다. data는 문자열만으로 구성된 리스트입니다. 각 문자열은 값을 원하는 유저의 아이디입니다. (대소문자 구별 안 함)</p>
+<p>result는 data에 주어진 순서대로 각 유저의 아이디, 티어와 랭킹을 나타내는 사전 객체를 담은 리스트입니다. 각 사전 객체는 세 개의 key를 가지며, 각각 "userid", "tier"와 "ranking"입니다. "userid"는 해당 유저의 아이디를 값으로 가집니다. "tier"는 해당 유저의 티어를 값으로 가집니다. "ranking"은 해당 유저의 0-based 랭킹을 값으로 가집니다.</p>
+<p>만약 존재하지 않는 유저라면 "userid", "tier"와 "ranking" 모두 null을 값으로 가집니다.</p>
+<p><a href="/api/user?q=[&quot;cuBeLOVeR&quot;,&quot;koosaga&quot;,&quot;&quot;]">/api/user?q=["cuBeLOVeR","koosaga",""]</a></p>
+<p>curl https://koosa.ga/api/user -X POST -d "q=[\"cuBeLOVeR\",\"koosaga\",\"\"]"</p>
+<p>curl https://koosa.ga/api/user -X POST -d "[\"cuBeLOVeR\",\"koosaga\",\"\"]" -H "Content-Type: Application/json"</p>
 </div>
 {% endblock %}
