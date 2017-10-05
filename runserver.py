@@ -61,7 +61,7 @@ def user(u):
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
 	if flask.request.method == 'POST':
-		flask.session['id'] = flask.request.form.get('id', '')
+		flask.session['id'] = flask.request.form.get('id', '').strip()
 		return flask.redirect(flask.url_for('index'))
 	return flask.render_template('login.html', me = flask.session.get('id', '')).replace('\n', '')
 
@@ -151,9 +151,10 @@ def problem(p):
 
 @app.route('/problems/')
 def problems():
-	u = flask.session.get('id', '')
+	u = flask.session.get('id', '').lower()
 	if u:
 		lock.acquire()
+		u = username[u]
 		if u in users:
 			s = set(corrects[users[u]])
 		else:
