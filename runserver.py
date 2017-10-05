@@ -30,43 +30,44 @@ def Error(s, e):
 def delta_to_str(d):
 	return '방금 전' if d < 60 else '%d분 전' % (d // 60) if d < 3600 else '%d시간 전' % (d // 3600) if d < 259200 else '%d일 전' % (d // 86400)
 
+def render(f, **a):
+	return flask.render_template(f, me = flask.session.get('id', ''), **a).replace('\n', '')
+
 @app.route('/')
 def index():
-	return flask.render_template('index.html', me = flask.session.get('id', '')).replace('\n', '')
+	return render('index.html')
 
 @app.route('/tool/')
 def tools():
 	t = flask.request.args.get('t', '')
 	if t == 'prob':
-		return flask.render_template('tool_prob.html', me = flask.session.get('id', '')).replace('\n', '')
-	return flask.render_template('tool.html', me = flask.session.get('id', '')).replace('\n', '')
+		return render('tool_prob.html')
+	return render('tool.html')
 
 @app.route('/user/<u>/')
 def user(u):
-	u = u.lower()
 	lock.acquire()
-	if u not in username:
+	u, x = get_user(u)
+	if u is None:
 		lock.release()
-		return flask.render_template('error.html', me = flask.session.get('id', '')).replace('\n', '')
-	u = username[u]
-	x = users[u]
-	me = flask.session.get('id', '')
+		return render('error.html')
+	mu = flask.session.get('id', '')
+	mu, mx = get_user(mu)
 	t = time.time()
-	r = list((_[0], delta_to_str(t - _[1]), ' class="correct"' if me in users and is_correct(users[flask.session.get('id', '')], _[0]) else '', ConvDiff(diffs[_[0]])) for _ in recents[x][:20])
+	r = list((_[0], delta_to_str(t - _[1]), '' if mu is None or not is_correct(mx, _[0]) else ' class="correct"', ConvDiff(diffs[_[0]])) for _ in recents[x][:20])
 	t = ConvTier(tiers[x])
 	o = GetRanking(x)
 	lock.release()
-	return flask.render_template('user.html', me = me, u = u, t = t, r = r, o = o).replace('\n', '')
+	return render('user.html', u = u, t = t, r = r, o = o)
 
 @app.route('/login/', methods = ['GET', 'POST'])
 def login():
 	if flask.request.method == 'POST':
 		flask.session['id'] = flask.request.form.get('id', '').strip()
 		return flask.redirect(flask.url_for('index'))
-	return flask.render_template('login.html', me = flask.session.get('id', '')).replace('\n', '')
+	return render('login.html')
 
 def _recommend(user, diff):
-	lock.acquire()
 	j = bisect.bisect(order, (diff, ''))
 	i = j - 1
 	r = list()
@@ -79,35 +80,32 @@ def _recommend(user, diff):
 			if not is_correct(user, order[j][1]):
 				r.append((order[j][1], ConvDiff(order[j][0])))
 			j += 1
-	lock.release()
 	return r
 
 @app.route('/recommend/')
 def recommend():
-	u = flask.session.get('id', '').lower()
+	u = flask.session.get('id', '')
 	if not u:
 		return flask.redirect(flask.url_for('login'))
 	lock.acquire()
-	if u not in username:
+	u, x = get_user(u)
+	if u is None:
 		lock.release()
-		return flask.render_template('error.html', me = flask.session.get('id', ''))
-	u = username[u]
-	x = users[u]
+		return render('error.html')
 	y = tiers[x]
-	lock.release()
 	z = y / 100
 	ay = z * 4 / 5
 	by = z
 	cy = z * 5 / 4
 	dy = 0
-	return flask.render_template('recommend.html',
-		me = flask.session.get('id', ''),
+	a, b, c, d = (_recommend(x, _) for _ in (ay, by, cy, dy))
+	lock.release()
+	return render('recommend.html',
 		u = u, t = ConvTier(y),
-		ay = ConvDiff(ay), a = _recommend(x, ay),
-		by = ConvDiff(by), b = _recommend(x, by),
-		cy = ConvDiff(cy), c = _recommend(x, cy),
-		dy = dy, d = _recommend(x, dy)
-	).replace('\n', '')
+		ay = ConvDiff(ay), a = a,
+		by = ConvDiff(by), b = b,
+		cy = ConvDiff(cy), c = c,
+		dy = dy, d = d)
 
 @app.route('/ranking/<p>/')
 def ranking(p):
@@ -118,20 +116,21 @@ def ranking(p):
 	lock.acquire()
 	t = rankings[p:p+100]
 	lock.release()
-	return flask.render_template('ranking.html', me = flask.session.get('id', ''), t = [(p + i + 1, t[i][1], ConvTier(-t[i][0])) for i in range(len(t))]).replace('\n', '')
+	return render('ranking.html', t = [(p + i + 1, t[i][1], ConvTier(-t[i][0])) for i in range(len(t))])
 
 @app.route('/problem/<p>/')
 def problem(p):
 	u = flask.session.get('id', '')
+	lock.acquire()
 	if u:
-		lock.acquire()
-		if u in users:
-			s = set(corrects[users[u]])
-		else:
+		u, x = get_user(u)
+		if u is None:
 			s = set()
-		lock.release()
+		else:
+			s = set(corrects[x])
 	else:
 		s = set()
+	lock.release()
 	try:
 		p = int(p)
 		if p < 0 or p > 99:
@@ -147,37 +146,27 @@ def problem(p):
 	y = list()
 	for q, r in t:
 		(y if r in s else x).append((r, ConvDiff(q)))
-	return flask.render_template('problem.html', me = flask.session.get('id', ''), x = x, y = y, p = p).replace('\n', '')
+	return render('problem.html', x = x, y = y, p = p)
 
 @app.route('/problems/')
 def problems():
-	u = flask.session.get('id', '').lower()
+	u = flask.session.get('id', '')
+	lock.acquire()
 	if u:
-		lock.acquire()
-		u = username[u]
-		if u in users:
-			s = set(corrects[users[u]])
-		else:
+		u, x = get_user(u)
+		if u is None:
 			s = set()
-		lock.release()
+		else:
+			s = set(corrects[x])
 	else:
 		s = set()
 	x = list([i, 0, 0] for i in range(100))
-	lock.acquire()
 	d = list(order)
 	lock.release()
 	for q, r in d:
 		x[ConvDiff(q) // 100][1 if r in s else 2] += 1
-	return flask.render_template('problems.html', me = flask.session.get('id', ''), x = x).replace('\n', '') 
+	return render('problems.html', x = x)
 
-"""
-@app.route('/data/')
-def data():
-	lock.acquire()
-	a = [(len(corrects[users[x]]), tiers[users[x]]) for x in users]
-	lock.release()
-	return '\n'.join(map(lambda t: str(t[0]) + ',' + str(t[1]), a))
-"""
 ########
 # Api
 
@@ -200,14 +189,12 @@ def api_user(data):
 	for u in data:
 		if type(u) is not str:
 			return None
-		u = u.lower()
 		lock.acquire()
-		if u not in username:
+		u, x = get_user(u)
+		if u is None:
 			lock.release()
 			res.append({ 'userid': None, 'tier': None, 'ranking': None })
 			continue
-		u = username[u]
-		x = users[u]
 		res.append({ 'userid': u, 'tier': ConvTier(tiers[x]) / 100, 'ranking': GetRanking(x) })
 		lock.release()
 	return res
@@ -216,7 +203,7 @@ APIS = { 'prob': api_prob, 'user': api_user }
 
 @app.route('/api/')
 def api():
-	return flask.render_template('api.html', me = flask.session.get('id', '')).replace('\n', '')
+	return render('api.html')
 
 @app.route('/api/<action>', methods = ['GET', 'POST'])
 def api_action(action):
@@ -263,6 +250,14 @@ def del_user(u):
 		corrects.pop()
 		tiers[x] = tiers[y]
 		tiers.pop()
+
+def get_user(u):
+	u = u.lower()
+	if u not in username:
+		return (None, None)
+	u = username[u]
+	x = users[u]
+	return (u, x)
 
 def add_correct(x, p):
 	corrects[x].add(p)
